@@ -1,0 +1,7 @@
+1.- Descargar de: https://git-scm.com/download/win
+
+2.- Despues de instalar git no se necesita reiniciar la PC completamente. Solo reiniciar la ventana de CMD que pudiese estas usando
+
+3.- cree un carpeta c:\dev\genesys
+
+4.- en cmd cambiar a la carpeta "c:\dev\genesys" y teclear "git init" eso crea una carpeta oculta llamada ".git" en la carpeta "c:\dev\genesys"

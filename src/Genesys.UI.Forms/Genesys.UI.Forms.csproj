@@ -95,6 +95,7 @@
       <HintPath>..\Genesys.Framework\packages\Syncfusion.XlsIO.WinForms.33.2.5\lib\net462\Syncfusion.XlsIO.Base.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -106,28 +107,32 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Dialogos\DialogoEntrada.cs">
+    <Compile Include="DialogoEntrada.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Dialogos\DialogoEntrada.Designer.cs">
+    <Compile Include="DialogoEntrada.Designer.cs">
       <DependentUpon>DialogoEntrada.cs</DependentUpon>
     </Compile>
-    <Compile Include="Dialogos\DialogoSeleccion.cs">
+    <Compile Include="DialogoSeleccion.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Dialogos\DialogoSeleccion.Designer.cs">
+    <Compile Include="DialogoSeleccion.Designer.cs">
       <DependentUpon>DialogoSeleccion.cs</DependentUpon>
     </Compile>
-    <Compile Include="FormularioMaestro\FormularioMaestro.cs">
+    <Compile Include="FormularioMaestro.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FormularioMaestro\FormularioMaestro.Designer.cs">
+    <Compile Include="FormularioMaestro.Designer.cs">
       <DependentUpon>FormularioMaestro.cs</DependentUpon>
     </Compile>
     <Compile Include="Modelos.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Genesys.Data\Genesys.Data.csproj">
+      <Project>{86f86ba4-0eea-4aed-9c24-b88e94fa6c3a}</Project>
+      <Name>Genesys.Data</Name>
+    </ProjectReference>
     <ProjectReference Include="..\GeneSys.UI.Components\Genesys.UI.Components.csproj">
       <Project>{945370ad-966a-4c63-879c-7b7a70106cfc}</Project>
       <Name>Genesys.UI.Components</Name>
@@ -138,7 +143,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="FormularioMaestro\FormularioMaestro.resx">
+    <EmbeddedResource Include="FormularioMaestro.resx">
       <DependentUpon>FormularioMaestro.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>

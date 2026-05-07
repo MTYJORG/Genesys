@@ -27,7 +27,7 @@ namespace Juguera
         {
             InitializeComponent();
             ConfigurarControles();
-
+            
             this.Resize += MensajesErrores_Resize;
         }
 
@@ -36,10 +36,10 @@ namespace Juguera
             lblErroresIndicador.ForeColor = Color.Red;
             lblErroresIndicador.Location = new Point(0, 0);
             lblErroresIndicador.Width = AnchoIndicador;
-            lblErroresIndicador.TextAlign = ContentAlignment.MiddleCenter;
+            lblErroresIndicador.TextAlign = ContentAlignment.TopCenter;
 
             lblErrores.Location = new Point(AnchoIndicador, 0);
-            lblErrores.TextAlign = ContentAlignment.MiddleLeft;
+            lblErrores.TextAlign = ContentAlignment.TopLeft;
             lblErrores.AutoSize = false;
             lblErrores.AutoEllipsis = false;
             lblErrores.UseCompatibleTextRendering = false;

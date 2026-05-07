@@ -17,9 +17,8 @@ public class StoredProcedureLookupProvider : ILookupProvider
         using (var cmd = new SqlCommand("uspDataTables", cn))
         {
             cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@Titulo", ParametroValor);
-            cmd.Parameters.AddWithValue("@Filtro", DBNull.Value); // 🔥 sin filtro
-
+            cmd.Parameters.Add("@Titulo", SqlDbType.VarChar).Value = ParametroValor;
+            cmd.Parameters.Add("@Filtro", SqlDbType.VarChar).Value = DBNull.Value; // 🔥 sin filtro
             cn.Open();
             dt.Load(cmd.ExecuteReader());
         }
@@ -33,10 +32,8 @@ public class StoredProcedureLookupProvider : ILookupProvider
         using (var cmd = new SqlCommand("uspDataTables", cn))
         {
             cmd.CommandType = CommandType.StoredProcedure;
-
             cmd.Parameters.Add("@Titulo", SqlDbType.VarChar).Value = ParametroValor;
             cmd.Parameters.Add("@Filtro", SqlDbType.VarChar).Value = value?.Trim();
-
             cn.Open();
 
             using (var dr = cmd.ExecuteReader())
@@ -44,8 +41,7 @@ public class StoredProcedureLookupProvider : ILookupProvider
                 var dt = new DataTable();
                 dt.Load(dr);
 
-                if (dt.Rows.Count == 0)
-                    return null;
+                if (dt.Rows.Count == 0) return null;
 
                 // Exception por si llega a ver mas de un registro lo que significa que el Stored Procedure no filtro correctamente un solo registro.
                 if (dt.Rows.Count > 1)
@@ -56,9 +52,7 @@ public class StoredProcedureLookupProvider : ILookupProvider
                 return new LookupResult
                 {
                     Value = row[0]?.ToString(),
-                    Description = row.Table.Columns.Count > 1
-                        ? row[1]?.ToString()
-                        : row[0]?.ToString(),
+                    Description = row.Table.Columns.Count > 1 ? row[1]?.ToString() : row[0]?.ToString(),    // Si el row solo tiene una columna usa esa columna para la descripción
                     Data = row
                 };
             }

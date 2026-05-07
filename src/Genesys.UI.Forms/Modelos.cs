@@ -4,6 +4,11 @@ using System.Data;
 
 namespace ComponentesComunes
 {
+    public static class AppConfiguracion
+    {
+        public static string CadenaConexion { get; set; }
+    }
+
     public class ConfiguracionColumna
     {
         public string NombreCampo { get; set; }

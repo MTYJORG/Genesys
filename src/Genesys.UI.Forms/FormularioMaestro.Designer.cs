@@ -8,7 +8,7 @@
         private System.Windows.Forms.Panel panelBotones;
         private System.Windows.Forms.Panel panelFiltros;
         private System.Windows.Forms.Panel panelContenido;
-        private Syncfusion.WinForms.DataGrid.SfDataGrid mainGrid;
+        private Syncfusion.WinForms.DataGrid.SfDataGrid syncGrid;
         private System.Windows.Forms.BindingNavigator navigator;
         private System.Windows.Forms.BindingSource bindingSource;
         private System.Windows.Forms.ToolStripLabel lblInfoRegistros;
@@ -21,15 +21,9 @@
         protected System.Windows.Forms.Button btnExcel;
         protected System.Windows.Forms.Button btnPdf;
         protected System.Windows.Forms.Button btnSalir;
-
-        // Controles de filtro (accesibles desde el código)
-        private System.Windows.Forms.Label lblDesde;
-        protected System.Windows.Forms.DateTimePicker dtpDesde;
-        private System.Windows.Forms.Label lblHasta;
-        protected System.Windows.Forms.DateTimePicker dtpHasta;
-        private System.Windows.Forms.Label lblBuscar;
-        private System.Windows.Forms.Label lblEstado;
-        protected System.Windows.Forms.ComboBox cmbEstado;
+        protected System.Windows.Forms.DateTimePicker datFechaInicio;
+        protected System.Windows.Forms.DateTimePicker datFechaFinal;
+        protected System.Windows.Forms.ComboBox cbxFiltroStatus;
 
         protected override void Dispose(bool disposing)
         {
@@ -50,17 +44,17 @@
             this.btnPdf = new System.Windows.Forms.Button();
             this.btnSalir = new System.Windows.Forms.Button();
             this.panelFiltros = new System.Windows.Forms.Panel();
-            this.aTxtCodigo = new Genesys.UI.Controls.aTextBox();
+            this.FiltroHistoria_L = new System.Windows.Forms.Label();
+            this.lblCampoFiltro = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
+            this.aTxtCampoFiltro = new Genesys.UI.Controls.aTextBox();
             this.txtDescripcion = new System.Windows.Forms.TextBox();
-            this.lblDesde = new System.Windows.Forms.Label();
-            this.dtpDesde = new System.Windows.Forms.DateTimePicker();
-            this.lblHasta = new System.Windows.Forms.Label();
-            this.dtpHasta = new System.Windows.Forms.DateTimePicker();
-            this.lblBuscar = new System.Windows.Forms.Label();
-            this.lblEstado = new System.Windows.Forms.Label();
-            this.cmbEstado = new System.Windows.Forms.ComboBox();
+            this.datFechaInicio = new System.Windows.Forms.DateTimePicker();
+            this.datFechaFinal = new System.Windows.Forms.DateTimePicker();
+            this.cbxFiltroStatus = new System.Windows.Forms.ComboBox();
             this.panelContenido = new System.Windows.Forms.Panel();
-            this.mainGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid();
+            this.syncGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid();
             this.navigator = new System.Windows.Forms.BindingNavigator(this.components);
             this.bindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.lblInfoRegistros = new System.Windows.Forms.ToolStripLabel();
@@ -68,7 +62,7 @@
             this.panelBotones.SuspendLayout();
             this.panelFiltros.SuspendLayout();
             this.panelContenido.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.mainGrid)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.syncGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.navigator)).BeginInit();
             this.navigator.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource)).BeginInit();
@@ -186,136 +180,136 @@
             // 
             this.panelFiltros.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(250)))), ((int)(((byte)(250)))), ((int)(((byte)(250)))));
             this.panelFiltros.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.panelFiltros.Controls.Add(this.aTxtCodigo);
+            this.panelFiltros.Controls.Add(this.FiltroHistoria_L);
+            this.panelFiltros.Controls.Add(this.lblCampoFiltro);
+            this.panelFiltros.Controls.Add(this.label2);
+            this.panelFiltros.Controls.Add(this.label1);
+            this.panelFiltros.Controls.Add(this.aTxtCampoFiltro);
             this.panelFiltros.Controls.Add(this.txtDescripcion);
-            this.panelFiltros.Controls.Add(this.lblDesde);
-            this.panelFiltros.Controls.Add(this.dtpDesde);
-            this.panelFiltros.Controls.Add(this.lblHasta);
-            this.panelFiltros.Controls.Add(this.dtpHasta);
-            this.panelFiltros.Controls.Add(this.lblBuscar);
-            this.panelFiltros.Controls.Add(this.lblEstado);
-            this.panelFiltros.Controls.Add(this.cmbEstado);
+            this.panelFiltros.Controls.Add(this.datFechaInicio);
+            this.panelFiltros.Controls.Add(this.datFechaFinal);
+            this.panelFiltros.Controls.Add(this.cbxFiltroStatus);
             this.panelFiltros.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelFiltros.Location = new System.Drawing.Point(0, 107);
+            this.panelFiltros.Location = new System.Drawing.Point(0, 101);
             this.panelFiltros.Name = "panelFiltros";
             this.panelFiltros.Padding = new System.Windows.Forms.Padding(9, 7, 9, 4);
-            this.panelFiltros.Size = new System.Drawing.Size(1029, 70);
+            this.panelFiltros.Size = new System.Drawing.Size(1029, 74);
             this.panelFiltros.TabIndex = 2;
             // 
-            // aTxtCodigo
+            // FiltroHistoria_L
             // 
-            this.aTxtCodigo.BackFocusColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(235)))), ((int)(((byte)(249)))));
-            this.aTxtCodigo.EsLookup = false;
-            this.aTxtCodigo.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.aTxtCodigo.Location = new System.Drawing.Point(282, 27);
-            this.aTxtCodigo.LookupAutoValidar = true;
-            this.aTxtCodigo.LookupControl = null;
-            this.aTxtCodigo.LookupImage = null;
-            this.aTxtCodigo.LookupProvider = null;
-            this.aTxtCodigo.Mask = null;
-            this.aTxtCodigo.Mayusculas = false;
-            this.aTxtCodigo.MostrarWatermark = true;
-            this.aTxtCodigo.Name = "aTxtCodigo";
-            this.aTxtCodigo.PermitirNegativos = false;
-            this.aTxtCodigo.Size = new System.Drawing.Size(100, 23);
-            this.aTxtCodigo.TabIndex = 11;
+            this.FiltroHistoria_L.AutoSize = true;
+            this.FiltroHistoria_L.Location = new System.Drawing.Point(734, 22);
+            this.FiltroHistoria_L.Name = "FiltroHistoria_L";
+            this.FiltroHistoria_L.Size = new System.Drawing.Size(40, 13);
+            this.FiltroHistoria_L.TabIndex = 15;
+            this.FiltroHistoria_L.Text = "Status:";
+            // 
+            // lblCampoFiltro
+            // 
+            this.lblCampoFiltro.Location = new System.Drawing.Point(206, 21);
+            this.lblCampoFiltro.Name = "lblCampoFiltro";
+            this.lblCampoFiltro.Size = new System.Drawing.Size(73, 15);
+            this.lblCampoFiltro.TabIndex = 14;
+            this.lblCampoFiltro.Text = "Campo Filtro:";
+            this.lblCampoFiltro.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(8, 39);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(32, 13);
+            this.label2.TabIndex = 13;
+            this.label2.Text = "Final:";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(8, 13);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(35, 13);
+            this.label1.TabIndex = 12;
+            this.label1.Text = "Inicio:";
+            // 
+            // aTxtCampoFiltro
+            // 
+            this.aTxtCampoFiltro.BackFocusColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(235)))), ((int)(((byte)(249)))));
+            this.aTxtCampoFiltro.EsLookup = false;
+            this.aTxtCampoFiltro.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.aTxtCampoFiltro.Location = new System.Drawing.Point(282, 17);
+            this.aTxtCampoFiltro.LookupAutoValidar = true;
+            this.aTxtCampoFiltro.LookupControl = null;
+            this.aTxtCampoFiltro.LookupImage = null;
+            this.aTxtCampoFiltro.LookupProvider = null;
+            this.aTxtCampoFiltro.Mask = null;
+            this.aTxtCampoFiltro.Mayusculas = false;
+            this.aTxtCampoFiltro.MostrarWatermark = true;
+            this.aTxtCampoFiltro.Name = "aTxtCampoFiltro";
+            this.aTxtCampoFiltro.PermitirNegativos = false;
+            this.aTxtCampoFiltro.Size = new System.Drawing.Size(100, 23);
+            this.aTxtCampoFiltro.TabIndex = 11;
             // 
             // txtDescripcion
             // 
-            this.txtDescripcion.Location = new System.Drawing.Point(388, 28);
+            this.txtDescripcion.Location = new System.Drawing.Point(388, 18);
             this.txtDescripcion.Name = "txtDescripcion";
             this.txtDescripcion.Size = new System.Drawing.Size(266, 20);
             this.txtDescripcion.TabIndex = 10;
             // 
-            // lblDesde
+            // datFechaInicio
             // 
-            this.lblDesde.AutoSize = true;
-            this.lblDesde.Location = new System.Drawing.Point(9, 10);
-            this.lblDesde.Name = "lblDesde";
-            this.lblDesde.Size = new System.Drawing.Size(41, 13);
-            this.lblDesde.TabIndex = 0;
-            this.lblDesde.Text = "Desde:";
+            this.datFechaInicio.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.datFechaInicio.Location = new System.Drawing.Point(49, 9);
+            this.datFechaInicio.Name = "datFechaInicio";
+            this.datFechaInicio.Size = new System.Drawing.Size(103, 20);
+            this.datFechaInicio.TabIndex = 1;
+            this.datFechaInicio.Value = new System.DateTime(2026, 3, 30, 18, 45, 31, 569);
             // 
-            // dtpDesde
+            // datFechaFinal
             // 
-            this.dtpDesde.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpDesde.Location = new System.Drawing.Point(9, 28);
-            this.dtpDesde.Name = "dtpDesde";
-            this.dtpDesde.Size = new System.Drawing.Size(103, 20);
-            this.dtpDesde.TabIndex = 1;
-            this.dtpDesde.Value = new System.DateTime(2026, 3, 30, 18, 45, 31, 569);
+            this.datFechaFinal.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.datFechaFinal.Location = new System.Drawing.Point(49, 35);
+            this.datFechaFinal.Name = "datFechaFinal";
+            this.datFechaFinal.Size = new System.Drawing.Size(103, 20);
+            this.datFechaFinal.TabIndex = 3;
+            this.datFechaFinal.Value = new System.DateTime(2026, 4, 30, 18, 45, 31, 571);
             // 
-            // lblHasta
+            // cbxFiltroStatus
             // 
-            this.lblHasta.AutoSize = true;
-            this.lblHasta.Location = new System.Drawing.Point(124, 10);
-            this.lblHasta.Name = "lblHasta";
-            this.lblHasta.Size = new System.Drawing.Size(38, 13);
-            this.lblHasta.TabIndex = 2;
-            this.lblHasta.Text = "Hasta:";
-            // 
-            // dtpHasta
-            // 
-            this.dtpHasta.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpHasta.Location = new System.Drawing.Point(124, 28);
-            this.dtpHasta.Name = "dtpHasta";
-            this.dtpHasta.Size = new System.Drawing.Size(103, 20);
-            this.dtpHasta.TabIndex = 3;
-            this.dtpHasta.Value = new System.DateTime(2026, 4, 30, 18, 45, 31, 571);
-            // 
-            // lblBuscar
-            // 
-            this.lblBuscar.AutoSize = true;
-            this.lblBuscar.Location = new System.Drawing.Point(279, 11);
-            this.lblBuscar.Name = "lblBuscar";
-            this.lblBuscar.Size = new System.Drawing.Size(43, 13);
-            this.lblBuscar.TabIndex = 4;
-            this.lblBuscar.Text = "Buscar:";
-            // 
-            // lblEstado
-            // 
-            this.lblEstado.AutoSize = true;
-            this.lblEstado.Location = new System.Drawing.Point(780, 7);
-            this.lblEstado.Name = "lblEstado";
-            this.lblEstado.Size = new System.Drawing.Size(43, 13);
-            this.lblEstado.TabIndex = 6;
-            this.lblEstado.Text = "Estado:";
-            // 
-            // cmbEstado
-            // 
-            this.cmbEstado.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbEstado.Items.AddRange(new object[] {
+            this.cbxFiltroStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbxFiltroStatus.Items.AddRange(new object[] {
             "Todos",
             "Activo",
             "Inactivo"});
-            this.cmbEstado.Location = new System.Drawing.Point(780, 25);
-            this.cmbEstado.Name = "cmbEstado";
-            this.cmbEstado.Size = new System.Drawing.Size(103, 21);
-            this.cmbEstado.TabIndex = 7;
+            this.cbxFiltroStatus.Location = new System.Drawing.Point(780, 18);
+            this.cbxFiltroStatus.Name = "cbxFiltroStatus";
+            this.cbxFiltroStatus.Size = new System.Drawing.Size(103, 21);
+            this.cbxFiltroStatus.TabIndex = 7;
             // 
             // panelContenido
             // 
-            this.panelContenido.Controls.Add(this.mainGrid);
+            this.panelContenido.Controls.Add(this.syncGrid);
             this.panelContenido.Controls.Add(this.navigator);
             this.panelContenido.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelContenido.Location = new System.Drawing.Point(0, 177);
+            this.panelContenido.Location = new System.Drawing.Point(0, 175);
             this.panelContenido.Name = "panelContenido";
             this.panelContenido.Padding = new System.Windows.Forms.Padding(3);
             this.panelContenido.Size = new System.Drawing.Size(1029, 347);
             this.panelContenido.TabIndex = 0;
             // 
-            // mainGrid
+            // syncGrid
             // 
-            this.mainGrid.AccessibleName = "Table";
-            this.mainGrid.AllowEditing = false;
-            this.mainGrid.AllowFiltering = true;
-            this.mainGrid.AllowResizingColumns = true;
-            this.mainGrid.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mainGrid.Location = new System.Drawing.Point(3, 3);
-            this.mainGrid.Name = "mainGrid";
-            this.mainGrid.ShowRowHeader = true;
-            this.mainGrid.Size = new System.Drawing.Size(1023, 316);
-            this.mainGrid.TabIndex = 0;
+            this.syncGrid.AccessibleName = "Table";
+            this.syncGrid.AllowEditing = false;
+            this.syncGrid.AllowFiltering = true;
+            this.syncGrid.AllowResizingColumns = true;
+            this.syncGrid.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.syncGrid.Location = new System.Drawing.Point(3, 3);
+            this.syncGrid.Name = "syncGrid";
+            this.syncGrid.ShowRowHeader = true;
+            this.syncGrid.Size = new System.Drawing.Size(1023, 316);
+            this.syncGrid.TabIndex = 0;
             // 
             // navigator
             // 
@@ -351,7 +345,7 @@
             this.panelMensajes.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelMensajes.Location = new System.Drawing.Point(0, 52);
             this.panelMensajes.Name = "panelMensajes";
-            this.panelMensajes.Size = new System.Drawing.Size(1029, 55);
+            this.panelMensajes.Size = new System.Drawing.Size(1029, 49);
             this.panelMensajes.TabIndex = 4;
             // 
             // FormularioMaestro
@@ -371,7 +365,7 @@
             this.panelFiltros.PerformLayout();
             this.panelContenido.ResumeLayout(false);
             this.panelContenido.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.mainGrid)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.syncGrid)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.navigator)).EndInit();
             this.navigator.ResumeLayout(false);
             this.navigator.PerformLayout();
@@ -381,8 +375,12 @@
         }
 
         private System.Windows.Forms.TextBox txtDescripcion;
-        private Genesys.UI.Controls.aTextBox aTxtCodigo;
+        private Genesys.UI.Controls.aTextBox aTxtCampoFiltro;
         private Juguera.MensajesErrores panelMensajes;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label lblCampoFiltro;
+        private System.Windows.Forms.Label FiltroHistoria_L;
         //private ControlesPersonalizados.aTextBox aTxtCodigo;
     }
 }

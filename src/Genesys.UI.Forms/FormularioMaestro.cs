@@ -4,6 +4,7 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGridConverter;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -17,19 +18,22 @@ namespace ComponentesComunes
     {
         #region ========== PROPIEDADES VIRTUALES (SOBRESCRIBIR EN CLASE HIJA) ==========
 
-        protected virtual string StoredProcedurePrincipal => "";
-        protected virtual string CadenaConexion => "";
-        protected virtual string NombreAplicacion => "MiApp";
-        protected virtual string NombreFormulario => "FormularioMaestro";
-        protected virtual string ColumnaClaveEdicion => "ID";
-
-        // ===== NUEVAS PROPIEDADES PARA EL LOOKUP =====
-        protected virtual string LookupParametroValor => "";  // "Lotes", "Productos", "Clientes", etc.
-        //protected virtual bool HabilitarLookup => false;      // true si el formulario hijo quiere usarlo
-
-        protected virtual List<ConfiguracionColumna> ObtenerColumnas() => new List<ConfiguracionColumna>();
+        // SQL
+        // La librería referencia System.Configuration y lee el App.config de la aplicación que la consume, no el de la librería.
+        // Agregar la siguiente linea en "program.cs" de la aplicacion antes de abrir cualquier formulario.
+        // AppConfiguracion.CadenaConexion = ConfigurationManager.ConnectionStrings["conServerAdm"].ConnectionString;
+        protected string CadenaConexion => AppConfiguracion.CadenaConexion;
+        protected virtual string StoredProcedurePrincipal => "";        // ejemplo: "uspCABCLotes";
+        protected virtual string ColumnaClaveEdicion => "ID";           // ejemplo: "CIDLOTE"
         protected virtual List<ParametroDatos> ObtenerParametros() => new List<ParametroDatos>();
 
+        protected virtual string LookupParametroValor => "";  // "Lotes", "Productos", "Clientes", etc.
+
+        protected virtual List<ConfiguracionColumna> ObtenerColumnas() => new List<ConfiguracionColumna>();
+
+        // Vistas
+        protected virtual string CarpetaAppData => "MiApp";
+        protected virtual string PrefijoArchivoVista => "FormularioMaestro";
         #endregion
 
         #region ========== CAMPOS PRIVADOS ==========
@@ -38,9 +42,9 @@ namespace ComponentesComunes
         private bool _suprimirCarga = true;
         private string _nombreVistaActual;
         private Dictionary<string, double> _anchosOriginales;
-
-        // ===== NUEVO CAMPO =====
-        protected System.Data.DataRow _rowCodigoSeleccionado;  // protected para que el hijo lo acceda
+        
+        // protected para que el hijo lo acceda
+        protected System.Data.DataRow _rowCodigoSeleccionado;  
 
         #endregion
 
@@ -71,11 +75,11 @@ namespace ComponentesComunes
             //if (HabilitarLookup && !string.IsNullOrEmpty(LookupParametroValor))
             //{
 
-            aTxtCodigo.EsLookup = true;
-            aTxtCodigo.LookupControl = txtDescripcion;
-            aTxtCodigo.LookupProvider = new StoredProcedureLookupProvider { ParametroValor = LookupParametroValor };
+            aTxtCampoFiltro.EsLookup = true;
+            aTxtCampoFiltro.LookupControl = txtDescripcion;
+            aTxtCampoFiltro.LookupProvider = new StoredProcedureLookupProvider { ParametroValor = LookupParametroValor };
 
-            aTxtCodigo.LookupCompleted += (s, e) =>
+            aTxtCampoFiltro.LookupCompleted += (s, e) =>
             {
                 if (e.Success)
                 {
@@ -89,7 +93,7 @@ namespace ComponentesComunes
                 else
                 {
                     MostrarError(e.ErrorMessage == "Valor no válido" ? "Valor no válido" : e.ErrorMessage);
-                    aTxtCodigo.Clear();
+                    aTxtCampoFiltro.Clear();
                     txtDescripcion.Clear();
                 }
             };
@@ -115,23 +119,23 @@ namespace ComponentesComunes
             btnSalir.Click += (s, e) => this.Close();
 
             // Filtros
-            dtpDesde.ValueChanged += (s, e) => CargarDatos();
-            dtpHasta.ValueChanged += (s, e) => CargarDatos();
-            cmbEstado.SelectedIndexChanged += (s, e) => CargarDatos();
-            aTxtCodigo.TextChanged += (s, e) => CargarDatos();
+            datFechaInicio.ValueChanged += (s, e) => CargarDatos();
+            datFechaFinal.ValueChanged += (s, e) => CargarDatos();
+            cbxFiltroStatus.SelectedIndexChanged += (s, e) => CargarDatos();
+            aTxtCampoFiltro.TextChanged += (s, e) => CargarDatos();
             //btnLimpiar.Click += (s, e) => LimpiarFiltros();
 
             // Grid y navegación
-            mainGrid.SelectionChanged += (s, e) =>
+            syncGrid.SelectionChanged += (s, e) =>
             {
-                if (mainGrid.SelectedIndex >= 0 && bindingSource.Position != mainGrid.SelectedIndex)
-                    bindingSource.Position = mainGrid.SelectedIndex;
+                if (syncGrid.SelectedIndex >= 0 && bindingSource.Position != syncGrid.SelectedIndex)
+                    bindingSource.Position = syncGrid.SelectedIndex;
             };
 
             bindingSource.CurrentChanged += (s, e) =>
             {
-                if (bindingSource.Position >= 0 && mainGrid.View?.Records?.Count > bindingSource.Position)
-                    mainGrid.SelectedIndex = bindingSource.Position;
+                if (bindingSource.Position >= 0 && syncGrid.View?.Records?.Count > bindingSource.Position)
+                    syncGrid.SelectedIndex = bindingSource.Position;
             };
 
             this.FormClosing += (s, e) => GuardarVistaActual();
@@ -164,13 +168,13 @@ namespace ComponentesComunes
 
                     if (_datosActuales.Rows.Count == 0)
                     {
-                        mainGrid.DataSource = null;
+                        syncGrid.DataSource = null;
                         bindingSource.DataSource = null;
                         lblInfoRegistros.Text = "Sin datos";
                         return;
                     }
 
-                    mainGrid.DataSource = _datosActuales;
+                    syncGrid.DataSource = _datosActuales;
                     bindingSource.DataSource = _datosActuales;
                     AplicarConfiguracionColumnas();
 
@@ -200,7 +204,7 @@ namespace ComponentesComunes
 
             foreach (var col in columnas)
             {
-                var gridCol = mainGrid.Columns.FirstOrDefault(c => c.MappingName == col.NombreCampo);
+                var gridCol = syncGrid.Columns.FirstOrDefault(c => c.MappingName == col.NombreCampo);
                 if (gridCol == null) continue;
 
                 gridCol.HeaderText = col.TextoEncabezado ?? col.NombreCampo;
@@ -214,7 +218,7 @@ namespace ComponentesComunes
 
         #region ========== VISTAS ==========
 
-        private string RutaVistas => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), NombreAplicacion, "Vistas");
+        private string RutaVistas => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), CarpetaAppData, "Vistas");
 
         private void GuardarVista()
         {
@@ -225,13 +229,13 @@ namespace ComponentesComunes
             {
                 Nombre = nombre,
                 FechaCreacion = DateTime.Now,
-                AnchosColumnas = mainGrid.Columns.ToDictionary(c => c.MappingName, c => c.Width),
-                OrdenColumnas = mainGrid.Columns.Select(c => c.MappingName).ToList(),
-                ColumnasOcultas = mainGrid.Columns.Where(c => !c.Visible).Select(c => c.MappingName).ToList()
+                AnchosColumnas = syncGrid.Columns.ToDictionary(c => c.MappingName, c => c.Width),
+                OrdenColumnas = syncGrid.Columns.Select(c => c.MappingName).ToList(),
+                ColumnasOcultas = syncGrid.Columns.Where(c => !c.Visible).Select(c => c.MappingName).ToList()
             };
 
             Directory.CreateDirectory(RutaVistas);
-            string archivo = Path.Combine(RutaVistas, $"{NombreFormulario}_{nombre}.json");
+            string archivo = Path.Combine(RutaVistas, $"{PrefijoArchivoVista}_{nombre}.json");
             File.WriteAllText(archivo, JsonConvert.SerializeObject(vista, Formatting.Indented));
 
             _nombreVistaActual = nombre;
@@ -246,14 +250,14 @@ namespace ComponentesComunes
                 return;
             }
 
-            var archivos = Directory.GetFiles(RutaVistas, $"{NombreFormulario}_*.json");
+            var archivos = Directory.GetFiles(RutaVistas, $"{PrefijoArchivoVista}_*.json");
             if (archivos.Length == 0)
             {
                 MostrarAdvertencia("No hay vistas guardadas");
                 return;
             }
 
-            var nombres = archivos.Select(f => Path.GetFileNameWithoutExtension(f).Replace($"{NombreFormulario}_", "")).ToList();
+            var nombres = archivos.Select(f => Path.GetFileNameWithoutExtension(f).Replace($"{PrefijoArchivoVista}_", "")).ToList();
 
             string seleccion = DialogoSeleccion.Mostrar(nombres, "Seleccionar Vista");
             if (seleccion != null)
@@ -266,7 +270,7 @@ namespace ComponentesComunes
 
         private void AplicarVista(string nombreVista)
         {
-            string archivo = Path.Combine(RutaVistas, $"{NombreFormulario}_{nombreVista}.json");
+            string archivo = Path.Combine(RutaVistas, $"{PrefijoArchivoVista}_{nombreVista}.json");
             if (!File.Exists(archivo)) return;
 
             try
@@ -274,12 +278,12 @@ namespace ComponentesComunes
                 var vista = JsonConvert.DeserializeObject<ConfiguracionVista>(File.ReadAllText(archivo));
                 if (vista == null) return;
 
-                foreach (var col in mainGrid.Columns)
+                foreach (var col in syncGrid.Columns)
                     col.Visible = !vista.ColumnasOcultas.Contains(col.MappingName);
 
                 foreach (var kvp in vista.AnchosColumnas)
                 {
-                    var col = mainGrid.Columns.FirstOrDefault(c => c.MappingName == kvp.Key);
+                    var col = syncGrid.Columns.FirstOrDefault(c => c.MappingName == kvp.Key);
                     if (col != null && col.Visible)
                         col.Width = kvp.Value;
                 }
@@ -296,7 +300,7 @@ namespace ComponentesComunes
             {
                 Directory.CreateDirectory(RutaVistas);
                 var config = new { UltimaVista = _nombreVistaActual ?? "" };
-                string archivo = Path.Combine(RutaVistas, $"{NombreFormulario}_ultima.json");
+                string archivo = Path.Combine(RutaVistas, $"{PrefijoArchivoVista}_ultima.json");
                 File.WriteAllText(archivo, JsonConvert.SerializeObject(config));
             }
             catch { }
@@ -320,7 +324,7 @@ namespace ComponentesComunes
             try
             {
                 var options = new Syncfusion.WinForms.DataGridConverter.ExcelExportingOptions();
-                var engine = mainGrid.ExportToExcel(mainGrid.View, options);
+                var engine = syncGrid.ExportToExcel(syncGrid.View, options);
                 engine.Excel.Workbooks[0].SaveAs(dialog.FileName);
                 MostrarExito("Exportado a Excel");
 
@@ -347,7 +351,7 @@ namespace ComponentesComunes
             try
             {
                 var options = new Syncfusion.WinForms.DataGridConverter.PdfExportingOptions();
-                var doc = mainGrid.ExportToPdf(mainGrid.View, options);
+                var doc = syncGrid.ExportToPdf(syncGrid.View, options);
                 doc.Save(dialog.FileName);
                 doc.Close(true);
                 MostrarExito("Exportado a PDF");
@@ -381,7 +385,7 @@ namespace ComponentesComunes
 
         protected object ObtenerValorSeleccionado(string columna)
         {
-            var fila = mainGrid.SelectedItem as DataRowView;
+            var fila = syncGrid.SelectedItem as DataRowView;
             return fila?[columna];
         }
 

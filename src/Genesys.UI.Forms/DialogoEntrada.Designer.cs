@@ -1,4 +1,4 @@
-﻿namespace ComponentesComunes.Dialogos
+﻿namespace Genesys.UI.Forms.Dialogos
 {
     partial class DialogoEntrada
     {

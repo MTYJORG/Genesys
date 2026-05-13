@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace ComponentesComunes.Dialogos
+namespace Genesys.UI.Forms.Dialogos
 {
     public partial class DialogoEntrada : Form
     {

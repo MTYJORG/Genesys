@@ -103,7 +103,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="aTextBox\AppConfig.cs" />
     <Compile Include="aTextBox\aTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -118,7 +117,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="aTextBox\imagenes\lupa_16x16.png" />
+    <EmbeddedResource Include="aTextBox\lupa_16x16.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="aTextBox\aTextBox.resx">
@@ -127,6 +128,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Genesys.Framework\Genesys.Framework.csproj">
+      <Project>{f8813d60-922e-4cf6-b9a8-f02fbf8ddbab}</Project>
+      <Name>Genesys.Framework</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

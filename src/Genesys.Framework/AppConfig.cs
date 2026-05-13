@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Runtime;
 
 namespace Genesys.Framework
 {
@@ -9,15 +10,20 @@ namespace Genesys.Framework
 
         public static void Initialize()
         {
-            ConnectionString =
-                ConfigurationManager
-                    .ConnectionStrings["MainDb"]
-                    .ConnectionString;
+            string sModoProducción = ConfigurationManager.AppSettings["ModoProducción"];
 
-            if (string.IsNullOrWhiteSpace(ConnectionString))
+            if (sModoProducción == "Si")
             {
-                throw new Exception(
-                    "No se encontró el connection string 'MainDb'.");
+                ConnectionString = ConfigurationManager.ConnectionStrings["Contpaqi"].ConnectionString;
+
+                if (string.IsNullOrWhiteSpace(ConnectionString))
+                {
+                    throw new Exception("No se encontró el connection string 'Contpaqi'.");
+                }
+            }
+            else 
+            {
+                ConnectionString = "Data Source=" + Environment.MachineName + "\\SQLEXPRESS;" + "Initial Catalog=adJuguera_Allende_SA;" + "User Id=sa;" + "Password=Pa$$w0rd;";
             }
         }
     }

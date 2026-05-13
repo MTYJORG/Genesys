@@ -34,6 +34,9 @@
     <Reference Include="DataGridCore.WinForms.UI">
       <HintPath>..\..\..\..\Users\Jorge\source\repos\FormularioComun v2\DataGridCore.WinForms.UI\DataGridCore.WinForms.UI\bin\Debug\DataGridCore.WinForms.UI.dll</HintPath>
     </Reference>
+    <Reference Include="Genesys.Framework">
+      <HintPath>..\Genesys.Framework\bin\Debug\Genesys.Framework.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\Genesys.Framework\packages\Newtonsoft.Json.13.0.5-beta1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -119,11 +122,11 @@
     <Compile Include="DialogoSeleccion.Designer.cs">
       <DependentUpon>DialogoSeleccion.cs</DependentUpon>
     </Compile>
-    <Compile Include="FormularioMaestro.cs">
+    <Compile Include="FormBase.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FormularioMaestro.Designer.cs">
-      <DependentUpon>FormularioMaestro.cs</DependentUpon>
+    <Compile Include="FormBase.Designer.cs">
+      <DependentUpon>FormBase.cs</DependentUpon>
     </Compile>
     <Compile Include="Modelos.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -143,8 +146,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="FormularioMaestro.resx">
-      <DependentUpon>FormularioMaestro.cs</DependentUpon>
+    <EmbeddedResource Include="FormBase.resx">
+      <DependentUpon>FormBase.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

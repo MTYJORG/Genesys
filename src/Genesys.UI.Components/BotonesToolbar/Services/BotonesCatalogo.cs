@@ -1,0 +1,28 @@
+﻿using Genesys.UI.Components.BotonesToolbar.Models;
+using System.Collections.Generic;
+using Genesys.UI.Components.Properties;
+
+
+namespace Genesys.UI.Components.BotonesToolbar.Services
+{
+    public static class BotonesCatalogo
+    {
+        private static readonly Dictionary<BotonTipo, BotonInfo> botones = new Dictionary<BotonTipo, BotonInfo>()
+        {
+            { BotonTipo.Abrir, new BotonInfo {Texto = "Abrir", Tooltip = "Abrir registro", Icono = Resources.abrir } },
+            { BotonTipo.Nuevo, new BotonInfo {Texto = "Nuevo", Tooltip = "Nuevo registro", Icono = Resources.nuevo } },
+            { BotonTipo.Guardar, new BotonInfo { Texto = "Guardar", Tooltip = "Guardar registro", Icono = Resources.guardar} },
+            { BotonTipo.Eliminar, new BotonInfo { Texto = "Eliminar", Tooltip = "Eliminar registro", Icono = Resources.eliminar } },
+            { BotonTipo.Buscar, new BotonInfo { Texto = "Buscar", Tooltip = "Buscar información", Icono = Resources.buscar } },
+            { BotonTipo.Imprimir, new BotonInfo { Texto = "Imprimir", Tooltip = "Imprimir documento", Icono = Resources.ayuda } },
+            { BotonTipo.Exportar, new BotonInfo { Texto = "Exportar", Tooltip = "Exportar información", Icono = Resources.ayuda } },
+            { BotonTipo.Ayuda, new BotonInfo { Texto = "Ayuda", Tooltip = "Mostrar ayuda", Icono = Resources.ayuda } },
+            { BotonTipo.Salir, new BotonInfo { Texto = "Salir", Tooltip = "Cerrar ventana", Icono = Resources.salir } }
+        };
+
+        public static BotonInfo Obtener(BotonTipo tipo)
+        {
+            return botones[tipo];
+        }
+    }
+}

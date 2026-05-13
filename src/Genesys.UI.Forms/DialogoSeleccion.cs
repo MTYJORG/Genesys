@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace ComponentesComunes.Dialogos
+namespace Genesys.UI.Forms.Dialogos
 {
     public partial class DialogoSeleccion : Form
     {

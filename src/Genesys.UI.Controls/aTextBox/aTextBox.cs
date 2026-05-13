@@ -26,11 +26,8 @@ namespace Genesys.UI.Controls
         private string _watermarkText;
         private bool _mostrarWatermark = true;
 
-        //private bool _isFormatting = false;
-
         private bool CanEdit => this.Enabled && !this.ReadOnly;
 
-        //private int _controlOriginalLeft;
         // ───────────────────────────────────────────────────────────────────────
         // 🔍 LOOKUP (F3)
         // ───────────────────────────────────────────────────────────────────────
@@ -45,11 +42,19 @@ namespace Genesys.UI.Controls
         // Constructor estático: se ejecuta una sola vez al cargar la clase
         static aTextBox()
         {
+            // La imagen tiene en propiedades : Build Action = Embedded Resource y se incrusta dentro del ensamblado
+            // assembly.GetManifestResourceStream(...) ... busca recursos INTERNOS del DLL.
             var assembly = typeof(aTextBox).Assembly;
-            using (Stream stream = assembly.GetManifestResourceStream("Genesys.UI.Controls.Imagenes.lupa_16x16.png"))
+            using (Stream stream = assembly.GetManifestResourceStream("Genesys.UI.Controls.aTextBox.lupa_16x16.png"))
             {
                 if (stream != null)
+                {
                     DefaultLookupImage = new Bitmap(stream);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No se encontró lupa_16x16.png");
+                }
             }
         }
 
@@ -472,7 +477,7 @@ namespace Genesys.UI.Controls
         }
 
         // ───────────────────────────────────────────────────────────────────────
-        //
+        // ACCIONES
         // ───────────────────────────────────────────────────────────────────────
 
         private void ApplyBackColor()

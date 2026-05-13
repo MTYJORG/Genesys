@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Data;
 
-namespace ComponentesComunes
+namespace Genesys.UI.Forms
 {
-    public static class AppConfiguracion
-    {
-        public static string CadenaConexion { get; set; }
-    }
+    //public static class AppConfiguracion
+    //{
+    //    public static string CadenaConexion { get; set; }
+    //}
 
     public class ConfiguracionColumna
     {

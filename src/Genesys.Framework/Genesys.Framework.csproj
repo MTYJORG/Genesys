@@ -100,6 +100,7 @@
     <Reference Include="Syncfusion.XlsIO.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
       <HintPath>packages\Syncfusion.XlsIO.WinForms.33.2.5\lib\net462\Syncfusion.XlsIO.Base.dll</HintPath>
     </Reference>
+    <Reference Include="System" />
     <Reference Include="System.Configuration" />
   </ItemGroup>
   <ItemGroup>

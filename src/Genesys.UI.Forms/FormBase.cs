@@ -1,10 +1,10 @@
-﻿using ComponentesComunes.Dialogos;
+﻿using Genesys.Framework;
+using Genesys.UI.Forms.Dialogos;
 using Newtonsoft.Json;
-using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGridConverter;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using Genesys.UI.Data;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -12,28 +12,34 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace ComponentesComunes
+namespace Genesys.UI.Forms
 {
-    public partial class FormularioMaestro : Form
+    public partial class FormBase : Form
     {
         #region ========== PROPIEDADES VIRTUALES (SOBRESCRIBIR EN CLASE HIJA) ==========
 
-        // SQL
-        // La librería referencia System.Configuration y lee el App.config de la aplicación que la consume, no el de la librería.
-        // Agregar la siguiente linea en "program.cs" de la aplicacion antes de abrir cualquier formulario.
-        // AppConfiguracion.CadenaConexion = ConfigurationManager.ConnectionStrings["conServerAdm"].ConnectionString;
-        protected string CadenaConexion => AppConfiguracion.CadenaConexion;
-        protected virtual string StoredProcedurePrincipal => "";        // ejemplo: "uspCABCLotes";
-        protected virtual string ColumnaClaveEdicion => "ID";           // ejemplo: "CIDLOTE"
+        // Obtiene la cadena de conexion a SQL Server (Genesys.Famework)
+        protected string CadenaConexion => AppConfig.ConnectionString;
+
+        // Store Procedure y paramentros que llena el DataGrid principal, y que son pasados desde el formulario hijo.
+        protected virtual string StoredProcedurePrincipal => "";                                                                // ejemplo: "uspCABCLotes";
         protected virtual List<ParametroDatos> ObtenerParametros() => new List<ParametroDatos>();
 
-        protected virtual string LookupParametroValor => "";  // "Lotes", "Productos", "Clientes", etc.
+        // Valor del paramentro "@Titulo" del Stored Procedure "uspDataTables"
+        // usado para obtener de busqueda de datos del boton F3, y que son pasados desde el formulario hijo.
+        protected virtual string LookupParametroValor => "";                                                                    // ejemplo: "Productos", "Clientes", "Jugos"
+
+        protected virtual string ColumnaClaveEdicion => "ID";           // ejemplo: "CIDLOTE"
+
 
         protected virtual List<ConfiguracionColumna> ObtenerColumnas() => new List<ConfiguracionColumna>();
 
         // Vistas
         protected virtual string CarpetaAppData => "MiApp";
-        protected virtual string PrefijoArchivoVista => "FormularioMaestro";
+        protected virtual string PrefijoArchivoVista => "FormBase";
+
+        // Para cuando se requiera, en algunos casos como en F01_Lotes no recuerdo para que :)
+        //protected virtual bool RequiereParametroIdentity => false;
         #endregion
 
         #region ========== CAMPOS PRIVADOS ==========
@@ -50,7 +56,7 @@ namespace ComponentesComunes
 
         #region ========== CONSTRUCTOR ==========
 
-        public FormularioMaestro()
+        public FormBase()
         {
             InitializeComponent();
             ConfigurarEventos();
@@ -75,10 +81,11 @@ namespace ComponentesComunes
             //if (HabilitarLookup && !string.IsNullOrEmpty(LookupParametroValor))
             //{
 
-            aTxtCampoFiltro.EsLookup = true;
-            aTxtCampoFiltro.LookupControl = txtDescripcion;
-            aTxtCampoFiltro.LookupProvider = new StoredProcedureLookupProvider { ParametroValor = LookupParametroValor };
+            aTxtCampoFiltro.EsLookup = true;                        // Le indica al control aTextBox que este campo tiene F3
+            aTxtCampoFiltro.LookupControl = txtDescripcion;         // Control en donde el control aTextBox regresara la descripción del F3 seleccionado
+            aTxtCampoFiltro.LookupProvider = new StoredProcedureLookupProvider { ParametroValor = LookupParametroValor };   // Valor del 
 
+            // Evento que se ejecuta cuando el campo pierde el foco y regresa el valor o error
             aTxtCampoFiltro.LookupCompleted += (s, e) =>
             {
                 if (e.Success)
@@ -86,6 +93,7 @@ namespace ComponentesComunes
                     if (e.Data != null)
                     {
                         _rowCodigoSeleccionado = e.Data;
+
                         // Notificar al formulario hijo que se seleccionó un valor
                         OnLookupCompleted(e.Data);
                     }
@@ -149,11 +157,9 @@ namespace ComponentesComunes
         {
             if (_suprimirCarga) return;
             if (string.IsNullOrEmpty(StoredProcedurePrincipal) || string.IsNullOrEmpty(CadenaConexion)) return;
-
             try
             {
                 Cursor = Cursors.WaitCursor;
-
                 using (var conn = new SqlConnection(CadenaConexion))
                 using (var cmd = new SqlCommand(StoredProcedurePrincipal, conn) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 })
                 using (var da = new SqlDataAdapter(cmd))
@@ -163,7 +169,21 @@ namespace ComponentesComunes
 
                     var dt = new DataTable();
                     conn.Open();
-                    da.Fill(dt);
+
+                    try
+                    {
+                        da.Fill(dt);
+                    }
+                    catch (SqlException)
+                    {
+                        cmd.Parameters.Add(new SqlParameter("@Identity", SqlDbType.Int)
+                        {
+                            Direction = ParameterDirection.Output
+                        });
+                        dt = new DataTable();
+                        da.Fill(dt);
+                    }
+
                     _datosActuales = dt;
 
                     if (_datosActuales.Rows.Count == 0)
@@ -177,7 +197,6 @@ namespace ComponentesComunes
                     syncGrid.DataSource = _datosActuales;
                     bindingSource.DataSource = _datosActuales;
                     AplicarConfiguracionColumnas();
-
                     lblInfoRegistros.Text = $"Total: {_datosActuales.Rows.Count} registros";
                     lblInfoRegistros.ForeColor = Color.FromArgb(33, 115, 70);
 
@@ -239,21 +258,21 @@ namespace ComponentesComunes
             File.WriteAllText(archivo, JsonConvert.SerializeObject(vista, Formatting.Indented));
 
             _nombreVistaActual = nombre;
-            MostrarExito($"Vista '{nombre}' guardada");
+            //MostrarExito($"Vista '{nombre}' guardada");
         }
 
         private void CargarVista()
         {
             if (!Directory.Exists(RutaVistas))
             {
-                MostrarAdvertencia("No hay vistas guardadas");
+                //MostrarAdvertencia("No hay vistas guardadas");
                 return;
             }
 
             var archivos = Directory.GetFiles(RutaVistas, $"{PrefijoArchivoVista}_*.json");
             if (archivos.Length == 0)
             {
-                MostrarAdvertencia("No hay vistas guardadas");
+                //MostrarAdvertencia("No hay vistas guardadas");
                 return;
             }
 
@@ -264,7 +283,7 @@ namespace ComponentesComunes
             {
                 AplicarVista(seleccion);
                 _nombreVistaActual = seleccion;
-                MostrarExito($"Vista '{seleccion}' cargada");
+                //MostrarExito($"Vista '{seleccion}' cargada");
             }
         }
 
@@ -314,7 +333,7 @@ namespace ComponentesComunes
         {
             if (_datosActuales == null || _datosActuales.Rows.Count == 0)
             {
-                MostrarAdvertencia("No hay datos para exportar");
+                //MostrarAdvertencia("No hay datos para exportar");
                 return;
             }
 
@@ -326,7 +345,7 @@ namespace ComponentesComunes
                 var options = new Syncfusion.WinForms.DataGridConverter.ExcelExportingOptions();
                 var engine = syncGrid.ExportToExcel(syncGrid.View, options);
                 engine.Excel.Workbooks[0].SaveAs(dialog.FileName);
-                MostrarExito("Exportado a Excel");
+                //MostrarExito("Exportado a Excel");
 
                 if (MessageBox.Show("¿Abrir archivo?", "Exportación", MessageBoxButtons.YesNo) == DialogResult.Yes)
                     System.Diagnostics.Process.Start(dialog.FileName);
@@ -341,7 +360,7 @@ namespace ComponentesComunes
         {
             if (_datosActuales == null || _datosActuales.Rows.Count == 0)
             {
-                MostrarAdvertencia("No hay datos para exportar");
+                //MostrarAdvertencia("No hay datos para exportar");
                 return;
             }
 
@@ -354,7 +373,7 @@ namespace ComponentesComunes
                 var doc = syncGrid.ExportToPdf(syncGrid.View, options);
                 doc.Save(dialog.FileName);
                 doc.Close(true);
-                MostrarExito("Exportado a PDF");
+                //MostrarExito("Exportado a PDF");
 
                 if (MessageBox.Show("¿Abrir archivo?", "Exportación", MessageBoxButtons.YesNo) == DialogResult.Yes)
                     System.Diagnostics.Process.Start(dialog.FileName);
@@ -371,16 +390,16 @@ namespace ComponentesComunes
 
         protected virtual void AccionNuevo()
         {
-            MostrarInfo("Función Nuevo no implementada");
+            //MostrarInfo("Función Nuevo no implementada");
         }
 
         protected virtual void AccionEditar()
         {
-            var id = ObtenerValorSeleccionado(ColumnaClaveEdicion);
-            if (id == null || id == DBNull.Value)
-                MostrarAdvertencia("Debe seleccionar un registro");
-            else
-                MostrarInfo($"Editar registro ID: {id}");
+            //var id = ObtenerValorSeleccionado(ColumnaClaveEdicion);
+            //if (id == null || id == DBNull.Value)
+            //    MostrarAdvertencia("Debe seleccionar un registro");
+            //else
+            //    MostrarInfo($"Editar registro ID: {id}");
         }
 
         protected object ObtenerValorSeleccionado(string columna)
@@ -393,26 +412,25 @@ namespace ComponentesComunes
 
         #region ========== MENSAJES ==========
 
-        private void MostrarMensaje(string mensaje, Color fondo, Color texto)
+        protected void AgregarError(string mensaje)
         {
-            panelMensajes.BackColor = fondo;
-            panelMensajes.Controls.Clear();
-            var lbl = new Label { Text = mensaje, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = texto, BackColor = fondo };
-            panelMensajes.Controls.Add(lbl);
-            panelMensajes.Visible = true;
-
-            if (fondo == Color.FromArgb(212, 237, 218) || fondo == Color.FromArgb(207, 226, 255))
-            {
-                var timer = new Timer { Interval = 5000 };
-                timer.Tick += (s, e) => { panelMensajes.Visible = false; timer.Stop(); };
-                timer.Start();
-            }
+            panelMensajes.Agregar(mensaje);
         }
 
-        protected void MostrarError(string msg) => MostrarMensaje(msg, Color.FromArgb(248, 215, 218), Color.FromArgb(114, 28, 36));
-        protected void MostrarExito(string msg) => MostrarMensaje(msg, Color.FromArgb(212, 237, 218), Color.FromArgb(21, 87, 36));
-        protected void MostrarAdvertencia(string msg) => MostrarMensaje(msg, Color.FromArgb(255, 243, 205), Color.FromArgb(133, 100, 4));
-        protected void MostrarInfo(string msg) => MostrarMensaje(msg, Color.FromArgb(207, 226, 255), Color.FromArgb(13, 60, 97));
+        protected void MostrarError(string mensaje)
+        {
+            panelMensajes.Mostrar(mensaje);
+        }
+
+        protected void LimpiarErrores()
+        {
+            panelMensajes.Limpiar();
+        }
+
+        protected int CuentaErrores()
+        {
+            return panelMensajes.Cuenta();
+        }
 
         #endregion
     }

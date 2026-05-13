@@ -1,17 +1,17 @@
-﻿namespace ComponentesComunes
+﻿namespace Genesys.UI.Forms
 {
-    partial class FormularioMaestro
+    partial class FormBase
     {
         private System.ComponentModel.IContainer components = null;
 
         // Controles principales
-        private System.Windows.Forms.Panel panelBotones;
-        private System.Windows.Forms.Panel panelFiltros;
-        private System.Windows.Forms.Panel panelContenido;
-        private Syncfusion.WinForms.DataGrid.SfDataGrid syncGrid;
-        private System.Windows.Forms.BindingNavigator navigator;
-        private System.Windows.Forms.BindingSource bindingSource;
-        private System.Windows.Forms.ToolStripLabel lblInfoRegistros;
+        protected System.Windows.Forms.Panel panelBotones;
+        protected System.Windows.Forms.Panel panelFiltros;
+        protected System.Windows.Forms.Panel panelContenido;
+        protected Syncfusion.WinForms.DataGrid.SfDataGrid syncGrid;
+        protected System.Windows.Forms.BindingNavigator navigator;
+        protected System.Windows.Forms.BindingSource bindingSource;
+        protected System.Windows.Forms.ToolStripLabel lblInfoRegistros;
 
         // Botones 
         protected System.Windows.Forms.Button btnNuevo;
@@ -58,7 +58,7 @@
             this.navigator = new System.Windows.Forms.BindingNavigator(this.components);
             this.bindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.lblInfoRegistros = new System.Windows.Forms.ToolStripLabel();
-            this.panelMensajes = new Juguera.MensajesErrores();
+            this.panelMensajes = new Genesys.UI.Components.MensajesErrores();
             this.panelBotones.SuspendLayout();
             this.panelFiltros.SuspendLayout();
             this.panelContenido.SuspendLayout();
@@ -348,7 +348,7 @@
             this.panelMensajes.Size = new System.Drawing.Size(1029, 49);
             this.panelMensajes.TabIndex = 4;
             // 
-            // FormularioMaestro
+            // FormBase
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -357,7 +357,7 @@
             this.Controls.Add(this.panelFiltros);
             this.Controls.Add(this.panelMensajes);
             this.Controls.Add(this.panelBotones);
-            this.Name = "FormularioMaestro";
+            this.Name = "FormBase";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Formulario Maestro";
             this.panelBotones.ResumeLayout(false);
@@ -374,13 +374,13 @@
 
         }
 
-        private System.Windows.Forms.TextBox txtDescripcion;
-        private Genesys.UI.Controls.aTextBox aTxtCampoFiltro;
-        private Juguera.MensajesErrores panelMensajes;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label lblCampoFiltro;
-        private System.Windows.Forms.Label FiltroHistoria_L;
+        protected System.Windows.Forms.TextBox txtDescripcion;
+        protected Genesys.UI.Controls.aTextBox aTxtCampoFiltro;
+        protected Genesys.UI.Components.MensajesErrores panelMensajes;
+        protected System.Windows.Forms.Label label2;
+        protected System.Windows.Forms.Label label1;
+        protected System.Windows.Forms.Label lblCampoFiltro;
+        protected System.Windows.Forms.Label FiltroHistoria_L;
         //private ControlesPersonalizados.aTextBox aTxtCodigo;
     }
 }

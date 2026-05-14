@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Genesys.UI.Components.BotonesToolbar.Models
+﻿
+namespace Genesys.UI.Components.Controls.Toolbar
 {
     public enum BotonTipo
     {
@@ -16,7 +11,7 @@ namespace Genesys.UI.Components.BotonesToolbar.Models
         Imprimir,
         Exportar,
         Ayuda,
-        Salir,
+        Cerrar,
         Respaldar,
         Restaurar
     }

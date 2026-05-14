@@ -1,9 +1,7 @@
-﻿using Genesys.UI.Components.BotonesToolbar.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Genesys.UI.Components.Properties;
 
-
-namespace Genesys.UI.Components.BotonesToolbar.Services
+namespace Genesys.UI.Components.Controls.Toolbar
 {
     public static class BotonesCatalogo
     {
@@ -17,7 +15,7 @@ namespace Genesys.UI.Components.BotonesToolbar.Services
             { BotonTipo.Imprimir, new BotonInfo { Texto = "Imprimir", Tooltip = "Imprimir documento", Icono = Resources.ayuda } },
             { BotonTipo.Exportar, new BotonInfo { Texto = "Exportar", Tooltip = "Exportar información", Icono = Resources.ayuda } },
             { BotonTipo.Ayuda, new BotonInfo { Texto = "Ayuda", Tooltip = "Mostrar ayuda", Icono = Resources.ayuda } },
-            { BotonTipo.Salir, new BotonInfo { Texto = "Salir", Tooltip = "Cerrar ventana", Icono = Resources.salir } }
+            { BotonTipo.Cerrar, new BotonInfo { Texto = "Cerrar", Tooltip = "Cerrar <Alt+F4>", Icono = Resources.cerrar } },
         };
 
         public static BotonInfo Obtener(BotonTipo tipo)

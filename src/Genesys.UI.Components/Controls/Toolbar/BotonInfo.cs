@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace Genesys.UI.Components.BotonesToolbar.Models
+namespace Genesys.UI.Components.Controls.Toolbar
 {
     public class BotonInfo
     {

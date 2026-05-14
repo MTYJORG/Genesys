@@ -34,6 +34,30 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\Genesys.Framework\packages\Newtonsoft.Json.13.0.5-beta1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="Syncfusion.Grid.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Base.33.2.5\lib\net462\Syncfusion.Grid.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Grid.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Windows.33.2.5\lib\net462\Syncfusion.Grid.Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Licensing, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=632609b4d040f6b4, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Licensing.33.2.5\lib\net462\Syncfusion.Licensing.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Shared.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Base.33.2.5\lib\net462\Syncfusion.Shared.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Shared.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Windows.33.2.5\lib\net462\Syncfusion.Shared.Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.SpellChecker.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.SpellChecker.Base.33.2.5\lib\net462\Syncfusion.SpellChecker.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Tools.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Base.33.2.5\lib\net462\Syncfusion.Tools.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Tools.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Windows.33.2.5\lib\net462\Syncfusion.Tools.Windows.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -47,9 +71,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BotonesToolbar\BotonesComponent.cs" />
-    <Compile Include="BotonesToolbar\Models\BotonInfo.cs" />
-    <Compile Include="BotonesToolbar\Models\BotonTipo.cs" />
-    <Compile Include="BotonesToolbar\Services\BotonesCatalogo.cs" />
+    <Compile Include="Controls\Toolbar\GenesysToolbar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\GenesysBaseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\GenesysBaseForm.Designer.cs">
+      <DependentUpon>GenesysBaseForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GenesysUI.cs" />
+    <Compile Include="Controls\Toolbar\BotonInfo.cs" />
+    <Compile Include="Controls\Toolbar\BotonTipo.cs" />
+    <Compile Include="Controls\Toolbar\BotonesCatalogo.cs" />
     <Compile Include="MensajesErrores\MensajesErrores.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -73,16 +107,20 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Controls\Toolbar\GenesysToolbar.resx">
+      <DependentUpon>GenesysToolbar.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MensajesErrores\MensajesErrores.resx">
       <DependentUpon>MensajesErrores.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\salir.png" />
+    <None Include="Resources\cerrar.png" />
     <None Include="Resources\restaurar.png" />
     <None Include="Resources\respaldar.png" />
     <None Include="Resources\nuevo.png" />
@@ -93,6 +131,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\eliminar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Models\" />
+    <Folder Include="Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

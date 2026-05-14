@@ -4,8 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Genesys.UI.Components.BotonesToolbar.Models;
-using Genesys.UI.Components.BotonesToolbar.Services;
+using Genesys.UI.Components.Controls.Toolbar;
 
 namespace Genesys.UI.Components
 {

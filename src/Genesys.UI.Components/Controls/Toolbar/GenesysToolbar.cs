@@ -25,7 +25,8 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
                 ForeColor = Color.MidnightBlue,
-                ImageScalingSize = new Size(44, 34),
+                ImageScalingSize = new Size(28,28),
+                LauncherStyle = LauncherStyle.Office2007, 
                 LayoutStyle = ToolStripLayoutStyle.Flow,
                 ShowCaption = false,
                 ShowItemToolTips = true,
@@ -33,12 +34,21 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Office12Mode = false,
                 OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
                 ThemeName = "Metro",
-                Padding = new Padding(5, 2, 5, 2),
+                Padding = new Padding(0, 0, 1, 0),
 
                 ThemeStyle =
                 {
                     DropDownStyle = { HoverItemBackColor = Color.FromArgb(230, 230, 230) },
                     HoverItemBackColor = Color.FromArgb(218, 218, 218)
+                }
+            };
+
+            // Pinta una linea superior
+            toolStrip.Paint += (s, e) =>
+            {
+                using (var pen = new Pen(Color.LightGray, 1))
+                {
+                    e.Graphics.DrawLine(pen, 0, 0, toolStrip.Width, 0);
                 }
             };
 
@@ -57,15 +67,7 @@ namespace Genesys.UI.Components.Controls.Toolbar
         public void Add(BotonTipo tipo, string texto, string tooltip, Padding textPadding, Action onClick)
         {
             var info = BotonesCatalogo.Obtener(tipo);
-
-            var btn = CrearBoton(
-                tipo.ToString(),
-                texto,
-                info.Icono,
-                tooltip,
-                textPadding,
-                onClick
-            );
+            var btn = CrearBoton( tipo.ToString(), texto, info.Icono, tooltip, textPadding, onClick );
 
             AplicarReglasFramework(tipo, btn);
 
@@ -114,13 +116,7 @@ namespace Genesys.UI.Components.Controls.Toolbar
 
         #region INTERNOS
 
-        private ToolStripButton CrearBoton(
-            string id,
-            string texto,
-            Image icono,
-            string tooltip,
-            Padding textPadding,
-            Action onClick)
+        private ToolStripButton CrearBoton( string id, string texto, Image icono, string tooltip, Padding textPadding, Action onClick)
         {
             var btn = new ToolStripButton
             {
@@ -135,13 +131,27 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 TextAlign = ContentAlignment.BottomCenter,
                 ImageAlign = ContentAlignment.TopCenter,
                 Padding = textPadding,
-                Margin = new Padding(3, 0, 3, 0)
+                //Margin = new Padding(0, 0, 0, 0)
             };
 
             btn.Click += (s, e) => onClick?.Invoke();
 
             return btn;
         }
+
+        //protected override void OnPaint(PaintEventArgs e)
+        //{
+        //    base.OnPaint(e);
+
+        //    using (var pen = new Pen(Color.LightGray, 1))
+        //    {
+        //        var rect = this.ClientRectangle;
+        //        rect.Width -= 1;
+        //        rect.Height -= 1;
+
+        //        e.Graphics.DrawRectangle(pen, rect);
+        //    }
+        //}
 
         #endregion
     }

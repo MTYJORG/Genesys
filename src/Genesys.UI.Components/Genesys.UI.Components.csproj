@@ -71,6 +71,33 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BotonesToolbar\BotonesComponent.cs" />
+    <Compile Include="Controls\Containers\BodyContainer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Containers\ComboFilterControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Containers\FilterControlBase.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Containers\FiltersContainer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Containers\InformativePanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Containers\MainContentPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\Filters\FiltersPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\Messages\GenesysMessages.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\Messages\GenesysMessages.Designer.cs">
+      <DependentUpon>GenesysMessages.cs</DependentUpon>
+    </Compile>
     <Compile Include="Controls\Toolbar\GenesysToolbar.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -79,6 +106,9 @@
     </Compile>
     <Compile Include="Forms\GenesysBaseForm.Designer.cs">
       <DependentUpon>GenesysBaseForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\GenesysGridForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="GenesysUI.cs" />
     <Compile Include="Controls\Toolbar\BotonInfo.cs" />
@@ -107,6 +137,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Controls\Messages\GenesysMessages.resx">
+      <DependentUpon>GenesysMessages.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Controls\Toolbar\GenesysToolbar.resx">
       <DependentUpon>GenesysToolbar.cs</DependentUpon>
     </EmbeddedResource>

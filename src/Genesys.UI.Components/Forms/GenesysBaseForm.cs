@@ -1,5 +1,7 @@
-﻿using Genesys.UI.Components.Controls.Toolbar;
+﻿using Genesys.UI.Components.Controls.Messages;
+using Genesys.UI.Components.Controls.Toolbar;
 using Syncfusion.WinForms.Controls;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -15,12 +17,14 @@ namespace Genesys.UI.Components.Forms
         private static readonly Pen _penInactiveBorder = new Pen(Color.LightGray, 2);
         private static Icon _iconForma;
 
+        // Propiedades
         protected Panel ToolbarPanel { get; private set; }
         protected Panel MessagesPanel { get; private set; }
         protected Panel MainContentPanel { get; private set; }
 
         protected GenesysToolbar Toolbar { get; private set; }
-
+        protected GenesysMessages Messages { get; private set; }
+        
         private static Icon CargarIcono()
         {
             var icon = GenesysUI.AppIcon ?? SystemIcons.Application;
@@ -42,6 +46,15 @@ namespace Genesys.UI.Components.Forms
             ConfigureToolbar();     // 👈 Agrega primero botones del hijo
             AddCloseButton();       // 👈 luego agrega el boton "cerrar"
         }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            this.Invalidate(true);
+        }
+
+        // Formatea el Formulario
         private void ApplyVisualStyle()
         {
             if (_iconForma == null)
@@ -73,18 +86,31 @@ namespace Genesys.UI.Components.Forms
             this.Style.InactiveBorder = _penInactiveBorder;
             this.Style.ShadowOpacity = 255;
             this.Style.InactiveShadowOpacity = 100;
+
+            this.StartPosition = FormStartPosition.CenterScreen;
+
+            //this.Invalidate(true);   // 👈 fuerza repaint
+            //this.Update();           // 👈 aplica inmediatamente
         }
 
         private void InitializeLayout()
         {
             // ToolbarPanel
-            ToolbarPanel = new Panel  { Dock = DockStyle.Top, Height = 53, BackColor = Color.White };
+            ToolbarPanel = new Panel  { Dock = DockStyle.Top, Height = 49, BackColor = Color.White };
 
             // MessagesPanel
             MessagesPanel = new Panel { Dock = DockStyle.Top,Height = 49, BackColor = Color.White };
 
             // MainContentPanel 
             MainContentPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+
+            // 👇 Agrego el control al panel
+            Messages = new GenesysMessages
+            {
+                Dock = DockStyle.Fill
+            };
+
+            MessagesPanel.Controls.Add(Messages);
 
             // Orden IMPORTANTE (WinForms respeta orden de agregado)
             this.Controls.Add(MainContentPanel);

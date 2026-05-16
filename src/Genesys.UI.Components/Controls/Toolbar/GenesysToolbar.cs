@@ -14,7 +14,16 @@ namespace Genesys.UI.Components.Controls.Toolbar
         private readonly ToolStripEx toolStrip;
         private readonly Dictionary<string, ToolStripButton> botones;
 
-        public bool HasItems => toolStrip.Items.Count > 0;
+        private int maxButtonWidth = 0;
+
+        private const int ButtonMinWidth = 58;
+        private const int ButtonHeight = 45;
+        private const int ClosePaddingLeft = 55;
+
+        public bool HasItems
+        {
+            get { return toolStrip.Items.Count > 0; }
+        }
 
         public GenesysToolbar()
         {
@@ -25,8 +34,8 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
                 ForeColor = Color.MidnightBlue,
-                ImageScalingSize = new Size(28,28),
-                LauncherStyle = LauncherStyle.Office2007, 
+                ImageScalingSize = new Size(28, 28),
+                LauncherStyle = LauncherStyle.Office2007,
                 LayoutStyle = ToolStripLayoutStyle.Flow,
                 ShowCaption = false,
                 ShowItemToolTips = true,
@@ -43,8 +52,7 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 }
             };
 
-            // Pinta una linea superior
-            toolStrip.Paint += (s, e) =>
+            toolStrip.Paint += delegate (object s, PaintEventArgs e)
             {
                 using (var pen = new Pen(Color.LightGray, 1))
                 {
@@ -57,28 +65,74 @@ namespace Genesys.UI.Components.Controls.Toolbar
 
         #region API PUBLICA
 
-        // 👉 SIN padding
         public void Add(BotonTipo tipo, string texto, string tooltip, Action onClick)
         {
             Add(tipo, texto, tooltip, Padding.Empty, onClick);
         }
 
-        // 👉 CON padding
         public void Add(BotonTipo tipo, string texto, string tooltip, Padding textPadding, Action onClick)
         {
             var info = BotonesCatalogo.Obtener(tipo);
-            var btn = CrearBoton( tipo.ToString(), texto, info.Icono, tooltip, textPadding, onClick );
 
-            AplicarReglasFramework(tipo, btn);
+            var btn = CrearBoton(
+                tipo.ToString(),
+                texto,
+                info.Icono,
+                tooltip,
+                textPadding,
+                onClick);
 
             toolStrip.Items.Add(btn);
             botones.Add(btn.Name, btn);
+
+            UpdateButtonsWidth();
         }
 
-        public void AddSeparator()
+        public void AddBefore(
+            string beforeId,
+            BotonTipo tipo,
+            string texto,
+            string tooltip,
+            Action onClick)
+        {
+            AddBefore(beforeId, tipo, texto, tooltip, Padding.Empty, onClick);
+        }
+
+        public void AddBefore(
+            string beforeId,
+            BotonTipo tipo,
+            string texto,
+            string tooltip,
+            Padding textPadding,
+            Action onClick)
+        {
+            var info = BotonesCatalogo.Obtener(tipo);
+
+            var btn = CrearBoton(
+                tipo.ToString(),
+                texto,
+                info.Icono,
+                tooltip,
+                textPadding,
+                onClick);
+
+            int index = toolStrip.Items.IndexOfKey(beforeId);
+
+            if (index >= 0)
+                toolStrip.Items.Insert(index, btn);
+            else
+                toolStrip.Items.Add(btn);
+
+            botones.Add(btn.Name, btn);
+
+            UpdateButtonsWidth();
+        }
+
+        public void AddSeparator(string name = null)
         {
             var sep = new ToolStripSeparator
             {
+                Name = name,
                 AutoSize = false,
                 Height = toolStrip.Height
             };
@@ -88,7 +142,9 @@ namespace Genesys.UI.Components.Controls.Toolbar
 
         public void SetVisible(string id, bool visible)
         {
-            if (botones.TryGetValue(id, out var btn))
+            ToolStripButton btn;
+
+            if (botones.TryGetValue(id, out btn))
                 btn.Visible = visible;
         }
 
@@ -96,27 +152,20 @@ namespace Genesys.UI.Components.Controls.Toolbar
         {
             toolStrip.Items.Clear();
             botones.Clear();
-        }
-
-        #endregion
-
-        #region REGLAS FRAMEWORK
-
-        private void AplicarReglasFramework(BotonTipo tipo, ToolStripButton btn)
-        {
-            if (tipo == BotonTipo.Cerrar)
-            {
-                // 🔥 regla automática
-                btn.Padding = new Padding(80, 0, 0, 0);
-                btn.Margin = new Padding(10, 0, 3, 0);
-            }
+            maxButtonWidth = 0;
         }
 
         #endregion
 
         #region INTERNOS
 
-        private ToolStripButton CrearBoton( string id, string texto, Image icono, string tooltip, Padding textPadding, Action onClick)
+        private ToolStripButton CrearBoton(
+            string id,
+            string texto,
+            Image icono,
+            string tooltip,
+            Padding textPadding,
+            Action onClick)
         {
             var btn = new ToolStripButton
             {
@@ -130,28 +179,67 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Font = new Font("Segoe UI", 9F),
                 TextAlign = ContentAlignment.BottomCenter,
                 ImageAlign = ContentAlignment.TopCenter,
-                Padding = textPadding,
-                //Margin = new Padding(0, 0, 0, 0)
+                Padding = textPadding
             };
 
-            btn.Click += (s, e) => onClick?.Invoke();
+            btn.Click += delegate
+            {
+                if (onClick != null)
+                    onClick.Invoke();
+            };
 
             return btn;
         }
 
-        //protected override void OnPaint(PaintEventArgs e)
-        //{
-        //    base.OnPaint(e);
+        private void UpdateButtonsWidth()
+        {
+            maxButtonWidth = 0;
 
-        //    using (var pen = new Pen(Color.LightGray, 1))
-        //    {
-        //        var rect = this.ClientRectangle;
-        //        rect.Width -= 1;
-        //        rect.Height -= 1;
+            foreach (ToolStripItem item in toolStrip.Items)
+            {
+                var btn = item as ToolStripButton;
 
-        //        e.Graphics.DrawRectangle(pen, rect);
-        //    }
-        //}
+                if (btn == null)
+                    continue;
+
+                if (btn.Name == BotonTipo.Cerrar.ToString())
+                    continue;
+
+                int textWidth =
+                    TextRenderer.MeasureText(btn.Text, btn.Font).Width;
+
+                int proposedWidth = textWidth + 10;
+
+                if (proposedWidth > maxButtonWidth)
+                    maxButtonWidth = proposedWidth;
+            }
+
+            if (maxButtonWidth < ButtonMinWidth)
+                maxButtonWidth = ButtonMinWidth;
+
+            foreach (ToolStripItem item in toolStrip.Items)
+            {
+                var btn = item as ToolStripButton;
+
+                if (btn == null)
+                    continue;
+
+                btn.AutoSize = false;
+
+                if (btn.Name == BotonTipo.Cerrar.ToString())
+                {
+                    btn.Size = new Size(
+                        maxButtonWidth + ClosePaddingLeft,
+                        ButtonHeight);
+                }
+                else
+                {
+                    btn.Size = new Size(
+                        maxButtonWidth,
+                        ButtonHeight);
+                }
+            }
+        }
 
         #endregion
     }

@@ -92,6 +92,12 @@
     <Compile Include="Controls\Filters\FiltersPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Controls\Filters\GenesysGridDataProvider.cs" />
+    <Compile Include="Controls\Filters\GenesysGridFilterRequest.cs" />
+    <Compile Include="Controls\Filters\GenesysGridFilterResult.cs" />
+    <Compile Include="Controls\Filters\GenesysGridFiltersPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Controls\Messages\GenesysMessages.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -107,7 +113,16 @@
     <Compile Include="Forms\GenesysBaseForm.Designer.cs">
       <DependentUpon>GenesysBaseForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\GenesysFormShell.cs" />
+    <Compile Include="Forms\GenesysFormVisual.cs" />
     <Compile Include="Forms\GenesysGridForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\GenesysPanelFactory.cs" />
+    <Compile Include="Forms\GenesysSimpleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\GenesysStandardForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GenesysUI.cs" />
@@ -128,6 +143,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Genesys.Data\Genesys.Data.csproj">
+      <Project>{86f86ba4-0eea-4aed-9c24-b88e94fa6c3a}</Project>
+      <Name>Genesys.Data</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Genesys.UI.Controls\Genesys.UI.Controls.csproj">
       <Project>{00050f9d-be3c-407f-83c8-89da8d5fb43c}</Project>
       <Name>Genesys.UI.Controls</Name>
@@ -153,21 +172,50 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\cerrar.png" />
-    <None Include="Resources\restaurar.png" />
-    <None Include="Resources\respaldar.png" />
-    <None Include="Resources\nuevo.png" />
-    <None Include="Resources\guardar.png" />
-    <None Include="Resources\buscar.png" />
-    <None Include="Resources\ayuda.png" />
+    <Folder Include="Models\" />
+    <Folder Include="Services\" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Resources\abrir.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ayuda.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\buscar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\cerrar.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\eliminar.png" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="Services\" />
+    <None Include="Resources\ExportarExcel.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ExportarPdf.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\guardar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Imprimir.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\modificar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\nuevo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\refrescar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\respaldar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\restaurar.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

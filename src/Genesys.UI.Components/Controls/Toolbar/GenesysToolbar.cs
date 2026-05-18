@@ -34,7 +34,7 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
                 ForeColor = Color.MidnightBlue,
-                ImageScalingSize = new Size(28, 28),
+                ImageScalingSize = new Size(20, 20),
                 LauncherStyle = LauncherStyle.Office2007,
                 LayoutStyle = ToolStripLayoutStyle.Flow,
                 ShowCaption = false,
@@ -43,7 +43,7 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 Office12Mode = false,
                 OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
                 ThemeName = "Metro",
-                Padding = new Padding(0, 0, 1, 0),
+                Padding = new Padding(0, 1, 1, 0),
 
                 ThemeStyle =
                 {
@@ -61,6 +61,9 @@ namespace Genesys.UI.Components.Controls.Toolbar
             };
 
             Controls.Add(toolStrip);
+
+            TabStop = false;
+            toolStrip.TabStop = false;
         }
 
         #region API PUBLICA

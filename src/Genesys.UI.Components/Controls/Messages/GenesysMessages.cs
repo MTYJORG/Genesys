@@ -24,6 +24,8 @@ namespace Genesys.UI.Components.Controls.Messages
 
         public GenesysMessages()
         {
+            TabStop = false;
+
             InitializeComponent();
 
             ConfigurarControles();

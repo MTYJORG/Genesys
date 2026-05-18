@@ -1,6 +1,7 @@
 ﻿using Genesys.UI.Controls;
 using Genesys.UI.Data;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -26,15 +27,12 @@ namespace Genesys.UI.Components.Controls.Filters
         private bool initializing;
         private bool restoringState;
 
-        
         public aTextBox LookupTextBox { get; private set; }
 
         public string StoredProcedureName { get; set; }
         public string TipoDeAccion { get; set; }
         public string LookupParameterName { get; set; }
         public string ComboParameterName { get; set; }
-
-
         public string PersistenceKey { get; set; }
 
         public bool AutoSearch { get; set; }
@@ -43,10 +41,10 @@ namespace Genesys.UI.Components.Controls.Filters
 
         public GenesysGridFiltersPanel()
         {
+            initializing = true;
+
             LookupParameterName = "@LookupValue";
             ComboParameterName = "@ComboValue";
-
-            initializing = true;
 
             dataProvider = new GenesysGridDataProvider();
 
@@ -55,14 +53,15 @@ namespace Genesys.UI.Components.Controls.Filters
             Dock = DockStyle.Fill;
             Height = 70;
             BackColor = Color.WhiteSmoke;
+            TabStop = false;
 
             layout = new FlowLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.FlowDirection = FlowDirection.LeftToRight;
             layout.WrapContents = false;
             layout.AutoScroll = true;
-            layout.Padding = new Padding(6, 4, 6, 2);
             layout.BackColor = Color.WhiteSmoke;
+            layout.TabStop = false;
 
             lblFecha = new Label();
             cboRangoFecha = new ComboBox();
@@ -71,7 +70,7 @@ namespace Genesys.UI.Components.Controls.Filters
 
             lblLookup = new Label();
             LookupTextBox = new aTextBox();
-            txtLookupDescripcion = new TextBox();
+            txtLookupDescripcion = new aTextBox();
 
             lblCombo = new Label();
             cboFiltro = new ComboBox();
@@ -79,6 +78,7 @@ namespace Genesys.UI.Components.Controls.Filters
             Controls.Add(layout);
 
             BuildLayout();
+            ConfigureTabOrder();
             WireEvents();
             ApplyRangoFecha();
 
@@ -97,13 +97,16 @@ namespace Genesys.UI.Components.Controls.Filters
             var panel = new Panel();
             panel.Width = 185;
             panel.Height = 62;
-            panel.Margin = new Padding(0, 0, 12, 0);
+            panel.Margin = new Padding(5, 0, 12, 0);
             panel.BackColor = Color.WhiteSmoke;
+            panel.TabStop = false;
 
             lblFecha.Text = "Fecha";
             lblFecha.TextAlign = ContentAlignment.MiddleLeft;
-            lblFecha.SetBounds(0, 42, 70, 16);
+            lblFecha.SetBounds(0, 0, 70, 16);
+            lblFecha.TabStop = false;
 
+            cboRangoFecha.Name = "cboRangoFecha";
             cboRangoFecha.DropDownStyle = ComboBoxStyle.DropDownList;
             cboRangoFecha.Items.Add("<Todas>");
             cboRangoFecha.Items.Add("Rango");
@@ -115,10 +118,12 @@ namespace Genesys.UI.Components.Controls.Filters
             cboRangoFecha.SelectedIndex = 0;
             cboRangoFecha.SetBounds(0, 18, 72, 22);
 
+            dtpInicio.Name = "dtpInicio";
             dtpInicio.Format = DateTimePickerFormat.Short;
-            dtpFinal.Format = DateTimePickerFormat.Short;
-
             dtpInicio.SetBounds(78, 6, 100, 22);
+
+            dtpFinal.Name = "dtpFinal";
+            dtpFinal.Format = DateTimePickerFormat.Short;
             dtpFinal.SetBounds(78, 32, 100, 22);
 
             panel.Controls.Add(cboRangoFecha);
@@ -132,22 +137,29 @@ namespace Genesys.UI.Components.Controls.Filters
         private Panel BuildLookupPanel()
         {
             var panel = new Panel();
-            panel.Width = 275;
+            panel.Width = 450;
             panel.Height = 62;
             panel.Margin = new Padding(0, 0, 12, 0);
             panel.BackColor = Color.WhiteSmoke;
+            panel.TabStop = false;
 
             lblLookup.Text = "Lookup";
-            lblLookup.TextAlign = ContentAlignment.MiddleLeft;
-            lblLookup.SetBounds(0, 6, 65, 22);
+            lblLookup.TextAlign = ContentAlignment.MiddleRight;
+            lblLookup.SetBounds(5, 6, 65, 22);
+            lblLookup.TabStop = false;
 
-            LookupTextBox.SetBounds(70, 6, 90, 22);
+            LookupTextBox.Name = "LookupTextBox";
+            LookupTextBox.SetBounds(70, 6, 100, 22);
+            LookupTextBox.Mayusculas = true;
+            LookupTextBox.TabStop = true;
+            LookupTextBox.CausesValidation = true;
 
-            txtLookupDescripcion.SetBounds(70, 31, 195, 20);
-            txtLookupDescripcion.ReadOnly = true;
-            txtLookupDescripcion.BorderStyle = BorderStyle.None;
+            txtLookupDescripcion.Name = "txtLookupDescripcion";
+            txtLookupDescripcion.SetBounds(180, 6, 300, 22);
+            txtLookupDescripcion.Enabled = false;
             txtLookupDescripcion.BackColor = Color.WhiteSmoke;
             txtLookupDescripcion.ForeColor = Color.Black;
+            txtLookupDescripcion.TabStop = false;
 
             panel.Controls.Add(lblLookup);
             panel.Controls.Add(LookupTextBox);
@@ -159,22 +171,40 @@ namespace Genesys.UI.Components.Controls.Filters
         private Panel BuildComboPanel()
         {
             var panel = new Panel();
-            panel.Width = 220;
+            panel.Width = 200;
             panel.Height = 62;
             panel.Margin = new Padding(0, 0, 12, 0);
             panel.BackColor = Color.WhiteSmoke;
+            panel.TabStop = false;
 
             lblCombo.Text = "Estado";
-            lblCombo.TextAlign = ContentAlignment.MiddleLeft;
-            lblCombo.SetBounds(0, 6, 55, 22);
+            lblCombo.TextAlign = ContentAlignment.MiddleRight;
+            lblCombo.SetBounds(5, 6, 55, 22);
+            lblCombo.TabStop = false;
 
+            cboFiltro.Name = "cboFiltro";
             cboFiltro.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboFiltro.SetBounds(60, 6, 150, 22);
+            cboFiltro.SetBounds(60, 6, 130, 22);
 
             panel.Controls.Add(lblCombo);
             panel.Controls.Add(cboFiltro);
 
             return panel;
+        }
+
+        private void ConfigureTabOrder()
+        {
+            cboRangoFecha.TabStop = true;
+            dtpInicio.TabStop = true;
+            dtpFinal.TabStop = true;
+            LookupTextBox.TabStop = true;
+            cboFiltro.TabStop = true;
+
+            cboRangoFecha.TabIndex = 0;
+            dtpInicio.TabIndex = 1;
+            dtpFinal.TabIndex = 2;
+            LookupTextBox.TabIndex = 3;
+            cboFiltro.TabIndex = 4;
         }
 
         private void WireEvents()
@@ -197,7 +227,10 @@ namespace Genesys.UI.Components.Controls.Filters
 
             LookupTextBox.Leave += delegate
             {
-                ExecuteSearchIfEnabled();
+                BeginInvoke(new MethodInvoker(delegate
+                {
+                    ExecuteSearchIfEnabled();
+                }));
             };
 
             cboFiltro.SelectedValueChanged += delegate
@@ -292,6 +325,7 @@ namespace Genesys.UI.Components.Controls.Filters
         public void SetLookupProvider(string parametroValor)
         {
             LookupTextBox.EsLookup = true;
+            LookupTextBox.LookupControl = txtLookupDescripcion;
 
             LookupTextBox.LookupProvider =
                 new StoredProcedureLookupProvider
@@ -348,11 +382,11 @@ namespace Genesys.UI.Components.Controls.Filters
 
             request.FechaInicio = todas ? (DateTime?)null : dtpInicio.Value.Date;
             request.FechaFinal = todas ? (DateTime?)null : dtpFinal.Value.Date;
-            request.ComboParameterName = ComboParameterName;
-            request.LookupValue = LookupTextBox.Text;
 
             request.LookupParameterName = LookupParameterName;
+            request.LookupValue = LookupTextBox.Text;
 
+            request.ComboParameterName = ComboParameterName;
             request.ComboValue =
                 cboFiltro.SelectedValue == null
                     ? null
@@ -371,7 +405,6 @@ namespace Genesys.UI.Components.Controls.Filters
 
             state.FechaInicio = dtpInicio.Visible ? (DateTime?)dtpInicio.Value.Date : null;
             state.FechaFinal = dtpFinal.Visible ? (DateTime?)dtpFinal.Value.Date : null;
-
             state.LookupValue = LookupTextBox.Text;
 
             state.ComboValue =
@@ -426,6 +459,105 @@ namespace Genesys.UI.Components.Controls.Filters
 
             if (SearchCompleted != null)
                 SearchCompleted(this, result);
+        }
+
+        public bool FocusFirstFilter()
+        {
+            Control control = GetFocusableFilterControls()[0];
+
+            if (control == null)
+                return false;
+
+            control.Focus();
+            return true;
+        }
+
+        public bool FocusLastFilter()
+        {
+            Control[] controls = GetFocusableFilterControls();
+
+            if (controls.Length == 0)
+                return false;
+
+            controls[controls.Length - 1].Focus();
+            return true;
+        }
+
+        public bool MoveFilterFocus(bool forward)
+        {
+            Control[] controls = GetFocusableFilterControls();
+
+            if (controls.Length == 0)
+                return false;
+
+            Control current = GetFocusedChildControl();
+
+            if (current == null)
+            {
+                return forward ? FocusFirstFilter() : FocusLastFilter();
+            }
+
+            int index = Array.IndexOf(controls, current);
+
+            if (index < 0)
+            {
+                return forward ? FocusFirstFilter() : FocusLastFilter();
+            }
+
+            int nextIndex = forward ? index + 1 : index - 1;
+
+            if (nextIndex < 0 || nextIndex >= controls.Length)
+                return false;
+
+            controls[nextIndex].Focus();
+            return true;
+        }
+
+        public bool ContainsFilterFocus()
+        {
+            return ContainsFocus;
+        }
+
+        private Control[] GetFocusableFilterControls()
+        {
+            var list = new List<Control>();
+
+            if (cboRangoFecha.Visible && cboRangoFecha.Enabled)
+                list.Add(cboRangoFecha);
+
+            if (dtpInicio.Visible && dtpInicio.Enabled)
+                list.Add(dtpInicio);
+
+            if (dtpFinal.Visible && dtpFinal.Enabled)
+                list.Add(dtpFinal);
+
+            if (LookupTextBox.Visible && LookupTextBox.Enabled)
+                list.Add(LookupTextBox);
+
+            if (cboFiltro.Visible && cboFiltro.Enabled)
+                list.Add(cboFiltro);
+
+            return list.ToArray();
+        }
+
+        private Control GetFocusedChildControl()
+        {
+            if (cboRangoFecha.Focused)
+                return cboRangoFecha;
+
+            if (dtpInicio.Focused)
+                return dtpInicio;
+
+            if (dtpFinal.Focused)
+                return dtpFinal;
+
+            if (LookupTextBox.Focused || LookupTextBox.ContainsFocus)
+                return LookupTextBox;
+
+            if (cboFiltro.Focused)
+                return cboFiltro;
+
+            return null;
         }
     }
 }

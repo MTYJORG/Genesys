@@ -208,8 +208,10 @@ namespace Genesys.UI.Controls
         protected override void OnLeave(EventArgs e)
         {
             var form = this.FindForm();
-            bool vaAlBoton = form?.ActiveControl == _btnLookup ||
-                 string.IsNullOrEmpty(form?.ActiveControl?.Name) && _btnLookup.Visible;
+          
+            //bool vaAlBoton = form?.ActiveControl == _btnLookup || string.IsNullOrEmpty(form?.ActiveControl?.Name) && _btnLookup.Visible;
+            Control activeControl = form != null ? form.ActiveControl : null;
+            bool vaAlBoton = activeControl == _btnLookup;
 
             //Debug.WriteLine($"OnLeave → ActiveControl: {form?.ActiveControl?.Name ?? "null"}");
 

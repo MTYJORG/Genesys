@@ -15,25 +15,50 @@ namespace Genesys.UI.Components.Controls.Filters
 
         public GenesysGridFilterResult Execute(GenesysGridFilterRequest request)
         {
-            DataSet ds = dataService.ExecuteDataSet(request.StoredProcedureName, delegate (System.Data.SqlClient.SqlParameterCollection parameters)
-            {
-                parameters.Add("@FechaInicio", SqlDbType.DateTime).Value =
-                    request.FechaInicio.HasValue ? (object)request.FechaInicio.Value : DBNull.Value;
-
-                parameters.Add("@FechaFinal", SqlDbType.DateTime).Value =
-                    request.FechaFinal.HasValue ? (object)request.FechaFinal.Value : DBNull.Value;
-
-                parameters.Add("@LookupValue", SqlDbType.VarChar).Value =
-                    string.IsNullOrWhiteSpace(request.LookupValue) ? (object)DBNull.Value : request.LookupValue;
-
-                parameters.Add("@ComboValue", SqlDbType.VarChar).Value =
-                    request.ComboValue == null ? (object)DBNull.Value : request.ComboValue;
-
-                foreach (var p in request.ExtraParameters)
+            DataSet ds = dataService.ExecuteDataSet(
+                request.StoredProcedureName,
+                delegate (System.Data.SqlClient.SqlParameterCollection parameters)
                 {
-                    parameters.AddWithValue(p.Key, p.Value ?? DBNull.Value);
-                }
-            });
+                    parameters.Add("@TipoDeAccion", SqlDbType.VarChar).Value =
+                        string.IsNullOrWhiteSpace(request.TipoDeAccion)
+                            ? (object)DBNull.Value
+                            : request.TipoDeAccion;
+
+                    parameters.Add("@FechaInicio", SqlDbType.DateTime).Value =
+                        request.FechaInicio.HasValue
+                            ? (object)request.FechaInicio.Value
+                            : DBNull.Value;
+
+                    parameters.Add("@FechaFinal", SqlDbType.DateTime).Value =
+                        request.FechaFinal.HasValue
+                            ? (object)request.FechaFinal.Value
+                            : DBNull.Value;
+
+                    // Aqui se inyecta el nombre de paramentro a filtrar, por ejemplo "@Contrato" que es un paramentro del S.P. "uspCABCContratos"
+                    // se envía desde el form hijo
+                    if (!string.IsNullOrWhiteSpace(request.LookupParameterName))
+                    {
+                        parameters.Add(request.LookupParameterName, SqlDbType.VarChar).Value =
+                            string.IsNullOrWhiteSpace(request.LookupValue)
+                                ? (object)DBNull.Value
+                                : request.LookupValue;
+                    }
+
+                    // Aqui se inyecta el nombre de paramentro para el combro box, por ejemplo "@Estatus" que es un paramentro del S.P. "uspCABCContratos"
+                    // se envía desde el form hijo
+                    if (!string.IsNullOrWhiteSpace(request.ComboParameterName))
+                    {
+                        parameters.Add(request.ComboParameterName, SqlDbType.VarChar).Value =
+                            request.ComboValue == null
+                                ? (object)DBNull.Value
+                                : request.ComboValue;
+                    }
+
+                    foreach (var p in request.ExtraParameters)
+                    {
+                        parameters.AddWithValue(p.Key, p.Value ?? DBNull.Value);
+                    }
+                });
 
             if (ds.Tables.Count == 1)
             {

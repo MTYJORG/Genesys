@@ -14,8 +14,14 @@ namespace Genesys.UI.Components.Forms
         public GenesysToolbar Toolbar { get; private set; }
         public GenesysMessages Messages { get; private set; }
 
+        //====================================================================
+        // CONSTRUCTOR
+        //====================================================================
+
         public GenesysStandardForm()
         {
+            KeyPreview = true;
+
             SuspendLayout();
 
             GenesysFormVisual.Apply(this);
@@ -68,6 +74,18 @@ namespace Genesys.UI.Components.Forms
         private void CerrarFormulario()
         {
             Close();
+        }
+
+        // Atrapa la tecla de ESC
+        protected override bool ProcessCmdKey( ref Message msg,  Keys keyData)
+        {
+            if (keyData == Keys.Escape)
+            {
+                Close();
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
     }
 }

@@ -34,29 +34,50 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\Genesys.Framework\packages\Newtonsoft.Json.13.0.5-beta1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Grid.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Base.33.2.5\lib\net462\Syncfusion.Grid.Base.dll</HintPath>
+    <Reference Include="Syncfusion.Core.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Core.WinForms.33.2.6\lib\net462\Syncfusion.Core.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Grid.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Windows.33.2.5\lib\net462\Syncfusion.Grid.Windows.dll</HintPath>
+    <Reference Include="Syncfusion.Data.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Data.WinForms.33.2.6\lib\net462\Syncfusion.Data.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Licensing, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=632609b4d040f6b4, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Licensing.33.2.5\lib\net462\Syncfusion.Licensing.dll</HintPath>
+    <Reference Include="Syncfusion.DataSource.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.DataSource.WinForms.33.2.6\lib\net462\Syncfusion.DataSource.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Shared.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Base.33.2.5\lib\net462\Syncfusion.Shared.Base.dll</HintPath>
+    <Reference Include="Syncfusion.Grid.Base, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Base.33.2.6\lib\net462\Syncfusion.Grid.Base.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Shared.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Windows.33.2.5\lib\net462\Syncfusion.Shared.Windows.dll</HintPath>
+    <Reference Include="Syncfusion.Grid.Windows, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Grid.Windows.33.2.6\lib\net462\Syncfusion.Grid.Windows.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.SpellChecker.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.SpellChecker.Base.33.2.5\lib\net462\Syncfusion.SpellChecker.Base.dll</HintPath>
+    <Reference Include="Syncfusion.GridCommon.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.GridCommon.WinForms.33.2.6\lib\net462\Syncfusion.GridCommon.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Tools.Base, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Base.33.2.5\lib\net462\Syncfusion.Tools.Base.dll</HintPath>
+    <Reference Include="Syncfusion.Licensing, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=632609b4d040f6b4, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Licensing.33.2.6\lib\net462\Syncfusion.Licensing.dll</HintPath>
     </Reference>
-    <Reference Include="Syncfusion.Tools.Windows, Version=33.2462.5.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
-      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Windows.33.2.5\lib\net462\Syncfusion.Tools.Windows.dll</HintPath>
+    <Reference Include="Syncfusion.SfDataGrid.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.SfDataGrid.WinForms.33.2.6\lib\net462\Syncfusion.SfDataGrid.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.SfInput.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.SfInput.WinForms.33.2.6\lib\net462\Syncfusion.SfInput.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.SfListView.WinForms, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.SfListView.WinForms.33.2.6\lib\net462\Syncfusion.SfListView.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Shared.Base, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Base.33.2.6\lib\net462\Syncfusion.Shared.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Shared.Windows, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Shared.Windows.33.2.6\lib\net462\Syncfusion.Shared.Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.SpellChecker.Base, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.SpellChecker.Base.33.2.6\lib\net462\Syncfusion.SpellChecker.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Tools.Base, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Base.33.2.6\lib\net462\Syncfusion.Tools.Base.dll</HintPath>
+    </Reference>
+    <Reference Include="Syncfusion.Tools.Windows, Version=33.2462.6.0, Culture=neutral, PublicKeyToken=3d67ed1f87d44c89, processorArchitecture=MSIL">
+      <HintPath>..\Genesys.Framework\packages\Syncfusion.Tools.Windows.33.2.6\lib\net462\Syncfusion.Tools.Windows.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -92,12 +113,15 @@
     <Compile Include="Controls\Filters\FiltersPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Controls\Filters\GenesysComboFilterItem.cs" />
     <Compile Include="Controls\Filters\GenesysGridDataProvider.cs" />
+    <Compile Include="Controls\Filters\GenesysGridFilterPersistence.cs" />
     <Compile Include="Controls\Filters\GenesysGridFilterRequest.cs" />
     <Compile Include="Controls\Filters\GenesysGridFilterResult.cs" />
     <Compile Include="Controls\Filters\GenesysGridFiltersPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Controls\Filters\GenesysGridFilterState.cs" />
     <Compile Include="Controls\Messages\GenesysMessages.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -153,6 +177,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -171,10 +196,7 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="Resources\abrir.png" />
   </ItemGroup>

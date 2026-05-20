@@ -1,5 +1,4 @@
-﻿using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.WinForms.Controls;
+﻿using Syncfusion.WinForms.Controls;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -17,26 +16,19 @@ namespace Genesys.UI.Components.Forms
 
         public static void Apply(SfForm form)
         {
-            //form.StartPosition = FormStartPosition.CenterScreen;
-            //form.Font = new Font("Segoe UI", 9F);
-            //form.AutoScaleMode = AutoScaleMode.Font;
-            //form.MinimumSize = new Size(800, 500);
-            //form.Padding = new Padding(0);
-            //form.BackColor = Color.White;
-
             if (_iconForma == null)
                 _iconForma = CargarIcono();
 
-            form.Font = _fontUI;
             form.Icon = _iconForma;
             form.IconSize = new Size(40, 40);
             form.AllowRoundedCorners = true;
-            //this.ShowToolTip = false;
 
             form.MinimumSize = new Size(900, 500);
-            
+
+            form.Font = _fontUI;
+
             var tb = form.Style.TitleBar;
-            tb.Font = _fontUI;
+            //tb.Font = _fontUI;
             tb.ForeColor = _cFore;
             tb.Height = 30;
             tb.BackColor = Color.White;

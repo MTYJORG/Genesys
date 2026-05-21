@@ -23,7 +23,7 @@ namespace Genesys.UI.Components.Forms
             form.IconSize = new Size(40, 40);
             form.AllowRoundedCorners = true;
 
-            form.MinimumSize = new Size(900, 500);
+            form.MinimumSize = new Size(1000, 743);
 
             form.Font = _fontUI;
 

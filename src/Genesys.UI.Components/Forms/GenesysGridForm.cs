@@ -24,7 +24,7 @@ namespace Genesys.UI.Components.Forms
         private const int ButtonsPanelHeight = 46;
         private const int FiltersPanelHeight = 65;
         private const int MessagesPanelHeight = 49;
-        private const int InfoPanelHeight = 35;
+        private const int InfoPanelHeight = 26;
         private const int ToolbarConfigPanelWidth = 44;
         private const int ConfigButtonWidth = 40;
         private const int ConfigButtonHeight = 42;
@@ -56,6 +56,8 @@ namespace Genesys.UI.Components.Forms
         public GenesysMessages Messages { get; private set; }
         public GenesysGridFiltersPanel Filters { get; private set; }
         public SfDataGrid Grid { get; private set; }
+        
+        public GenesysGridNavigator GridNavigator { get; private set; }
 
         protected GenesysGridViewManager GridViewManager => gridViewManager;
 
@@ -87,6 +89,7 @@ namespace Genesys.UI.Components.Forms
             BuildMessages();
             BuildFilters();
             BuildGrid();
+            BuildGridNavigator();
             BuildViewDesigner();
             BuildGridViewManager();
 
@@ -162,6 +165,20 @@ namespace Genesys.UI.Components.Forms
             GenesysControlVisual.EnableDoubleBuffer(MessagesPanel);
             GenesysControlVisual.EnableDoubleBuffer(InfoPanel);
             GenesysControlVisual.EnableDoubleBuffer(GridPanel);
+        }
+
+        private void BuildGridNavigator()
+        {
+            GridNavigator = new GenesysGridNavigator
+            {
+                Dock = DockStyle.Fill,
+                Alignment = NavigatorAlignment.Right
+            }
+            .Attach(Grid)
+            .EnableMoveFirstAfterBind()
+            .EnableSelectionStatus();
+
+            InfoPanel.Controls.Add(GridNavigator);
         }
 
         private void BuildToolbar()
@@ -395,15 +412,14 @@ namespace Genesys.UI.Components.Forms
         protected void BindGridDataTable(DataTable table)
         {
             if (table == null)
-            {
-                //Messages?.ShowWarning("No se recibieron datos para mostrar en el grid.");
                 return;
-            }
 
             GenesysGridConfigurator.BindDataTable(Grid, table, GetGridNumericFormats());
 
             gridViewManager?.ReapplyCurrentView();
             ViewDesigner?.ReloadColumns();
+
+            GridNavigator?.NotifyDataBound();
         }
 
         // ─── Toolbar ──────────────────────────────────────────────────────────
@@ -725,6 +741,33 @@ namespace Genesys.UI.Components.Forms
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (GridNavigator != null && Grid != null && Grid.ContainsFocus)
+            {
+                if (keyData == Keys.Home)
+                {
+                    GridNavigator.MoveFirst();
+                    return true;
+                }
+
+                if (keyData == Keys.End)
+                {
+                    GridNavigator.MoveLast();
+                    return true;
+                }
+
+                if (keyData == (Keys.Control | Keys.Left))
+                {
+                    GridNavigator.MovePrevious();
+                    return true;
+                }
+
+                if (keyData == (Keys.Control | Keys.Right))
+                {
+                    GridNavigator.MoveNext();
+                    return true;
+                }
+            }
+
             bool isTab = keyData == Keys.Tab;
             bool isShiftTab = keyData == (Keys.Shift | Keys.Tab);
 

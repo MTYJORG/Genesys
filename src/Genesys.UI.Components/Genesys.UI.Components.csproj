@@ -138,6 +138,9 @@
     <Compile Include="Controls\GridViews\GenesysGridColumnProfile.cs" />
     <Compile Include="Controls\GridViews\GenesysGridConfigurator.cs" />
     <Compile Include="Controls\GridViews\GenesysGridGroupLayout.cs" />
+    <Compile Include="Controls\GridViews\GenesysGridNavigator.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Controls\GridViews\GenesysGridSummaryCellRenderer.cs" />
     <Compile Include="Controls\GridViews\GenesysGridSummaryLayout.cs" />
     <Compile Include="Controls\GridViews\GenesysGridSummaryPrompt.cs">
@@ -151,6 +154,9 @@
     <Compile Include="Controls\GridViews\GenesysGridViewManager.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewPrompt.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewState.cs" />
+    <Compile Include="Controls\GridViews\GenesysNavigatorButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\GridViews\IGenesysGridViewStore.cs" />
     <Compile Include="Controls\Messages\GenesysMessages.cs">
       <SubType>UserControl</SubType>

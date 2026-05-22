@@ -36,6 +36,7 @@ namespace Genesys.UI.Components.Forms
         private readonly Dictionary<string, string> gridNumericFormats;
         private GenesysGridViewManager gridViewManager;
         private bool filtersRestored;
+        private bool firstViewApplyPending = true;
         private ToolStripEx configToolStrip;
         private ToolStripButton btnConfig;
         private Font configButtonFont;
@@ -337,6 +338,11 @@ namespace Genesys.UI.Components.Forms
 
         private void BuildGridViewManager()
         {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: BuildGridViewManager START =====");
+            System.Diagnostics.Debug.WriteLine("GridViewKey: " + BuildGridViewKey());
+            System.Diagnostics.Debug.WriteLine("Filters null: " + (Filters == null));
+            System.Diagnostics.Debug.WriteLine("Grid null: " + (Grid == null));
+
             gridViewManager = new GenesysGridViewManager(
                 this,
                 Grid,
@@ -344,10 +350,20 @@ namespace Genesys.UI.Components.Forms
                 BuildGridViewKey());
 
             gridViewManager.Initialize();
+
+            gridViewManager.AttachFilters(
+                CaptureFiltersXml,
+                ApplyFiltersXml,
+                ExecuteFiltersSearch);
+
+            System.Diagnostics.Debug.WriteLine("AttachFilters llamado correctamente.");
+
             gridViewManager.DesignerRequested += GridViewManager_DesignerRequested;
 
             if (ViewDesigner != null)
                 ViewDesigner.Attach(gridViewManager);
+
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: BuildGridViewManager END =====");
         }
 
         // ─── Configuración del grid ───────────────────────────────────────────
@@ -411,15 +427,55 @@ namespace Genesys.UI.Components.Forms
 
         protected void BindGridDataTable(DataTable table)
         {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: BindGridDataTable START =====");
+            System.Diagnostics.Debug.WriteLine("Table null: " + (table == null));
+            System.Diagnostics.Debug.WriteLine("Rows: " + (table == null ? 0 : table.Rows.Count));
+            System.Diagnostics.Debug.WriteLine("Columns: " + (table == null ? 0 : table.Columns.Count));
+            System.Diagnostics.Debug.WriteLine("CurrentView before bind: " +
+                (gridViewManager == null ? string.Empty : gridViewManager.CurrentViewName));
+
             if (table == null)
+            {
+                System.Diagnostics.Debug.WriteLine("BindGridDataTable: table null, return.");
+                System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: BindGridDataTable END =====");
                 return;
+            }
 
-            GenesysGridConfigurator.BindDataTable(Grid, table, GetGridNumericFormats());
+            GenesysGridConfigurator.BindDataTable(
+                Grid,
+                table,
+                GetGridNumericFormats());
 
-            gridViewManager?.ReapplyCurrentView();
+            bool shouldReapplyView = false;
+
+            if (gridViewManager != null)
+            {
+                shouldReapplyView =
+                    firstViewApplyPending ||
+                    gridViewManager.IsApplyingFilterSearch;
+            }
+
+            System.Diagnostics.Debug.WriteLine("firstViewApplyPending: " + firstViewApplyPending);
+            System.Diagnostics.Debug.WriteLine("IsApplyingFilterSearch: " +
+                (gridViewManager == null ? false : gridViewManager.IsApplyingFilterSearch));
+            System.Diagnostics.Debug.WriteLine("ShouldReapplyView: " + shouldReapplyView);
+
+            if (shouldReapplyView)
+            {
+                System.Diagnostics.Debug.WriteLine("ReapplyCurrentView START");
+                firstViewApplyPending = false;
+                gridViewManager.ReapplyCurrentView();
+                System.Diagnostics.Debug.WriteLine("ReapplyCurrentView END");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ReapplyCurrentView OMITIDO.");
+            }
+
             ViewDesigner?.ReloadColumns();
-
             GridNavigator?.NotifyDataBound();
+
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: BindGridDataTable END =====");
         }
 
         // ─── Toolbar ──────────────────────────────────────────────────────────
@@ -678,6 +734,11 @@ namespace Genesys.UI.Components.Forms
 
         private void Filters_SearchCompleted(object sender, GenesysGridFilterResult e)
         {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: Filters_SearchCompleted =====");
+            System.Diagnostics.Debug.WriteLine("HasTable: " + e.HasTable);
+            System.Diagnostics.Debug.WriteLine("HasDataSet: " + e.HasDataSet);
+            System.Diagnostics.Debug.WriteLine("DataSet tables: " + (e.DataSet == null ? 0 : e.DataSet.Tables.Count));
+
             if (e.HasTable)
             {
                 BindGridDataTable(e.Table);
@@ -706,17 +767,155 @@ namespace Genesys.UI.Components.Forms
 
         private void RestoreFiltersAndSearch()
         {
+            System.Diagnostics.Debug.WriteLine(
+                "===== GENESYS GRID FORM: RestoreFiltersAndSearch START =====");
+
+            System.Diagnostics.Debug.WriteLine("filtersRestored: " + filtersRestored);
+            System.Diagnostics.Debug.WriteLine("PersistenceKey: " +
+                (Filters == null ? "" : Filters.PersistenceKey));
+
             if (filtersRestored)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "RestoreFiltersAndSearch: ya estaba restaurado, se omite.");
+                System.Diagnostics.Debug.WriteLine(
+                    "===== GENESYS GRID FORM: RestoreFiltersAndSearch END =====");
                 return;
+            }
 
             filtersRestored = true;
 
-            var state = filterPersistence.Load(Filters.PersistenceKey);
+            bool hasSavedGridView =
+                gridViewManager != null &&
+                !gridViewManager.IsCurrentViewDefault;
+
+            System.Diagnostics.Debug.WriteLine("CurrentViewName: " +
+                (gridViewManager == null ? "" : gridViewManager.CurrentViewName));
+
+            System.Diagnostics.Debug.WriteLine("IsCurrentViewDefault: " +
+                (gridViewManager == null ? true : gridViewManager.IsCurrentViewDefault));
+
+            System.Diagnostics.Debug.WriteLine("hasSavedGridView: " + hasSavedGridView);
+
+            if (hasSavedGridView)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "Hay vista guardada activa. NO se ejecuta búsqueda del panel para no pisar filtros del grid.");
+
+                System.Diagnostics.Debug.WriteLine(
+                    "===== GENESYS GRID FORM: RestoreFiltersAndSearch END =====");
+
+                return;
+            }
+
+            GenesysGridFilterState state =
+                filterPersistence.Load(Filters.PersistenceKey);
+
+            System.Diagnostics.Debug.WriteLine(
+                "Filter persistence state null: " + (state == null));
 
             if (state != null)
+            {
                 Filters.ApplyState(state);
+                System.Diagnostics.Debug.WriteLine(
+                    "Filtro persistente del formulario aplicado.");
+            }
 
             Filters.ExecuteSearch();
+
+            System.Diagnostics.Debug.WriteLine(
+                "===== GENESYS GRID FORM: RestoreFiltersAndSearch END =====");
+        }
+
+        private string CaptureFiltersXml()
+        {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: CaptureFiltersXml START =====");
+            System.Diagnostics.Debug.WriteLine("Filters null: " + (Filters == null));
+
+            if (Filters == null)
+            {
+                System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: CaptureFiltersXml END =====");
+                return null;
+            }
+
+            GenesysGridFilterState state = Filters.GetState();
+
+            System.Diagnostics.Debug.WriteLine("State null: " + (state == null));
+            System.Diagnostics.Debug.WriteLine("State type: " + (state == null ? string.Empty : state.GetType().FullName));
+
+            if (state == null)
+            {
+                System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: CaptureFiltersXml END =====");
+                return null;
+            }
+
+            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(GenesysGridFilterState));
+
+            using (var writer = new StringWriter())
+            {
+                serializer.Serialize(writer, state);
+                string xml = writer.ToString();
+
+                System.Diagnostics.Debug.WriteLine("CaptureFiltersXml XML length: " + (xml == null ? 0 : xml.Length));
+                System.Diagnostics.Debug.WriteLine("CaptureFiltersXml XML preview: " + SafePreview(xml, 300));
+                System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: CaptureFiltersXml END =====");
+
+                return xml;
+            }
+        }
+
+        private void ApplyFiltersXml(string xml)
+        {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: ApplyFiltersXml START =====");
+            System.Diagnostics.Debug.WriteLine("Filters null: " + (Filters == null));
+            System.Diagnostics.Debug.WriteLine("XML null/empty: " + string.IsNullOrWhiteSpace(xml));
+            System.Diagnostics.Debug.WriteLine("XML length: " + (xml == null ? 0 : xml.Length));
+            System.Diagnostics.Debug.WriteLine("XML preview: " + SafePreview(xml, 300));
+
+            if (Filters == null || string.IsNullOrWhiteSpace(xml))
+            {
+                System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: ApplyFiltersXml END =====");
+                return;
+            }
+
+            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(GenesysGridFilterState));
+
+            using (var reader = new StringReader(xml))
+            {
+                GenesysGridFilterState state = serializer.Deserialize(reader) as GenesysGridFilterState;
+
+                System.Diagnostics.Debug.WriteLine("Deserialized state null: " + (state == null));
+
+                if (state != null)
+                {
+                    Filters.ApplyState(state);
+                    System.Diagnostics.Debug.WriteLine("Filters.ApplyState ejecutado.");
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: ApplyFiltersXml END =====");
+        }
+
+        private void ExecuteFiltersSearch()
+        {
+            System.Diagnostics.Debug.WriteLine("===== GENESYS GRID FORM: ExecuteFiltersSearch =====");
+            System.Diagnostics.Debug.WriteLine("Filters null: " + (Filters == null));
+
+            if (Filters != null)
+                Filters.ExecuteSearch();
+        }
+
+        private string SafePreview(string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            string value = text.Replace("\r", " ").Replace("\n", " ");
+
+            if (value.Length <= maxLength)
+                return value;
+
+            return value.Substring(0, maxLength) + "...";
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

@@ -3,9 +3,13 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Enums;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.IO;
+using System.Reflection;
+using System.Text;
 using System.Windows.Forms;
 
 namespace Genesys.UI.Components.Controls.GridViews
@@ -21,10 +25,20 @@ namespace Genesys.UI.Components.Controls.GridViews
         private readonly IGenesysGridViewStore store;
         private readonly IGenesysGridViewStateStore stateStore;
         private readonly Dictionary<string, string> numericFormats;
+        private readonly GenesysGridSummaryService summaryService;
+        private readonly GenesysGridLayoutService layoutService;
+        private readonly GenesysGridViewPersistenceService persistenceService;
         private string currentViewName;
         private bool isApplyingLayout;
         private bool hasChanges;
-        private ContextMenuStrip currentMenu;
+        private bool skipNextFilterApplication;
+        private Func<string> captureFilterStateXml;
+        private Action<string> applyFilterStateXml;
+        private Action executeSearch;
+        private readonly GenesysGridViewMenuService menuService;
+        private readonly string ownerBaseText;
+        private readonly List<Tuple<EventInfo, Delegate>> dynamicGridEventHandlers = new List<Tuple<EventInfo, Delegate>>();
+        private string defaultNativeGridLayoutXml;
 
         public GenesysGridViewManager(Form owner, SfDataGrid grid, ToolStripButton button, string gridKey)
             : this(owner, grid, button, gridKey, new GenesysGridViewFileStore())
@@ -41,6 +55,46 @@ namespace Genesys.UI.Components.Controls.GridViews
             stateStore = store as IGenesysGridViewStateStore;
             numericFormats = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             currentViewName = DefaultViewName;
+            summaryService = new GenesysGridSummaryService(grid, numericFormats);
+            layoutService = new GenesysGridLayoutService(
+                grid,
+                summaryService,
+                delegate { return isApplyingLayout; },
+                delegate(bool value) { isApplyingLayout = value; });
+            persistenceService = new GenesysGridViewPersistenceService(
+                owner,
+                gridKey,
+                store,
+                stateStore,
+                DefaultViewName,
+                delegate { return currentViewName; },
+                delegate(string value) { currentViewName = value; },
+                IsDefaultView,
+                CaptureLayout,
+                ApplyDefaultLayout,
+                UpdateButtonState,
+                delegate(bool value) { hasChanges = value; });
+            menuService = new GenesysGridViewMenuService(
+                owner,
+                grid,
+                button,
+                numericFormats,
+                DefaultViewName,
+                persistenceService.LoadViews,
+                delegate { return currentViewName; },
+                IsDefaultView,
+                ApplyDefaultLayout,
+                ApplyLayout,
+                SaveCurrentOrAsk,
+                SaveAsNewView,
+                DuplicateView,
+                DeleteViewFromMenu,
+                ToggleDesigner,
+                AddOrReplaceSummary,
+                ClearSummaryForColumn,
+                ClearSummaryRows,
+                MarkChanged);
+            ownerBaseText = owner == null ? string.Empty : owner.Text;
         }
 
         public bool HasChanges
@@ -57,6 +111,12 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             get { return IsDefaultView(currentViewName); }
         }
+
+        public bool IsApplyingFilterSearch
+        {
+            get { return skipNextFilterApplication; }
+        }
+
 
         public void Initialize()
         {
@@ -84,20 +144,24 @@ namespace Genesys.UI.Components.Controls.GridViews
             GenesysGridConfigurator.ApplyNumericFormats(grid, numericFormats);
         }
 
+        public void AttachFilters(
+            Func<string> captureFilterStateXml,
+            Action<string> applyFilterStateXml,
+            Action executeSearch)
+        {
+            this.captureFilterStateXml = captureFilterStateXml;
+            this.applyFilterStateXml = applyFilterStateXml;
+            this.executeSearch = executeSearch;
+        }
+
         private void RestoreCurrentViewName()
         {
-            if (stateStore == null)
-                return;
-
-            string savedViewName = stateStore.LoadCurrentViewName(gridKey);
-            if (!string.IsNullOrWhiteSpace(savedViewName))
-                currentViewName = savedViewName;
+            currentViewName = persistenceService.RestoreCurrentViewName(currentViewName);
         }
 
         public void PersistCurrentViewName()
         {
-            if (stateStore != null)
-                stateStore.SaveCurrentViewName(gridKey, currentViewName);
+            persistenceService.PersistCurrentViewName(currentViewName);
         }
 
         public void ReapplyCurrentView()
@@ -108,14 +172,42 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return;
             }
 
-            var views = store.Load(gridKey);
+            var views = persistenceService.LoadViews();
             var layout = views.FirstOrDefault(x =>
                 string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
 
             if (layout != null)
+            {
+                CaptureDefaultNativeGridLayoutIfNeeded();
                 ApplyLayout(layout);
+            }
             else
                 ApplyDefaultLayout();
+        }
+
+        public void ReapplyCurrentViewLayoutOnly()
+        {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly START =====");
+            System.Diagnostics.Debug.WriteLine("CurrentViewName: " + currentViewName);
+
+            if (IsDefaultView(currentViewName))
+            {
+                System.Diagnostics.Debug.WriteLine("Vista predeterminada activa; no se reaplica layout guardado.");
+                System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly END =====");
+                return;
+            }
+
+            var views = persistenceService.LoadViews();
+            var layout = views.FirstOrDefault(x =>
+                string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
+
+            if (layout != null)
+            {
+                CaptureDefaultNativeGridLayoutIfNeeded();
+                ApplyLayout(layout);
+            }
+
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly END =====");
         }
 
         public void MarkClean()
@@ -135,367 +227,82 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         public void ShowMenu()
         {
-            if (currentMenu != null && !currentMenu.IsDisposed)
-            {
-                currentMenu.Close();
-                currentMenu.Items.Clear();
-            }
-            else
-            {
-                currentMenu = new ContextMenuStrip();
-            }
-
-            ContextMenuStrip menu = currentMenu;
-            menu.ShowImageMargin = false;
-
-            var views = store.Load(gridKey);
-
-            ToolStripMenuItem title = new ToolStripMenuItem("Vistas");
-            title.Enabled = false;
-            menu.Items.Add(title);
-
-            ToolStripMenuItem defaultItem = new ToolStripMenuItem(DefaultViewName);
-            defaultItem.Checked = IsDefaultView(currentViewName);
-            defaultItem.Click += delegate { ApplyDefaultLayout(); };
-            menu.Items.Add(defaultItem);
-
-            if (views.Count > 0)
-            {
-                menu.Items.Add(new ToolStripSeparator());
-
-                foreach (var view in views.OrderBy(x => x.ViewName))
-                {
-                    var item = new ToolStripMenuItem(view.ViewName);
-                    item.Checked = string.Equals(view.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase);
-                    item.Tag = view;
-                    item.Click += delegate(object s, EventArgs e)
-                    {
-                        ApplyLayout((GenesysGridViewLayout)((ToolStripMenuItem)s).Tag);
-                    };
-                    menu.Items.Add(item);
-                }
-            }
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            string saveText = IsDefaultView(currentViewName)
-                ? "Guardar como nueva vista..."
-                : "Guardar cambios en \"" + currentViewName + "\"";
-
-            var save = new ToolStripMenuItem(saveText);
-            save.Click += delegate { SaveCurrentOrAsk(); };
-            menu.Items.Add(save);
-
-            var saveAs = new ToolStripMenuItem("Guardar como nueva vista...");
-            saveAs.Click += delegate { SaveAsNewView(); };
-            menu.Items.Add(saveAs);
-
-            var duplicate = new ToolStripMenuItem("Duplicar vista...");
-            duplicate.Enabled = !IsDefaultView(currentViewName);
-            duplicate.Click += delegate { DuplicateView(); };
-            menu.Items.Add(duplicate);
-
-            var deleteView = new ToolStripMenuItem(IsDefaultView(currentViewName)
-                ? "Eliminar vista..."
-                : "Eliminar vista \"" + currentViewName + "\"...");
-            deleteView.Enabled = views.Count > 0;
-            deleteView.Click += delegate { DeleteViewFromMenu(); };
-            menu.Items.Add(deleteView);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            ToolStripMenuItem summaries = new ToolStripMenuItem("Summary row");
-
-            var addSummary = new ToolStripMenuItem("Agregar / editar summary...");
-            addSummary.Click += delegate { ShowSummaryEditor(); };
-            summaries.DropDownItems.Add(addSummary);
-
-            GridColumn currentColumn = GetCurrentColumn();
-            if (currentColumn != null && !string.IsNullOrWhiteSpace(currentColumn.MappingName))
-            {
-                summaries.DropDownItems.Add(new ToolStripSeparator());
-                summaries.DropDownItems.Add(CreateSummaryMenuItem("Suma de " + currentColumn.HeaderText, "Sum"));
-                summaries.DropDownItems.Add(CreateSummaryMenuItem("Promedio de " + currentColumn.HeaderText, "Average"));
-                summaries.DropDownItems.Add(CreateSummaryMenuItem("Conteo de " + currentColumn.HeaderText, "Count"));
-                summaries.DropDownItems.Add(CreateSummaryMenuItem("Mínimo de " + currentColumn.HeaderText, "Minimum"));
-                summaries.DropDownItems.Add(CreateSummaryMenuItem("Máximo de " + currentColumn.HeaderText, "Maximum"));
-            }
-
-            summaries.DropDownItems.Add(new ToolStripSeparator());
-            var clearCurrentSummary = new ToolStripMenuItem("Quitar summary de columna actual");
-            clearCurrentSummary.Enabled = currentColumn != null && !string.IsNullOrWhiteSpace(currentColumn.MappingName);
-            clearCurrentSummary.Click += delegate
-            {
-                GridColumn column = GetCurrentColumn();
-                if (column != null && !string.IsNullOrWhiteSpace(column.MappingName))
-                {
-                    ClearSummaryForColumn(column.MappingName);
-                    MarkChanged();
-                }
-            };
-            summaries.DropDownItems.Add(clearCurrentSummary);
-
-            var clearSummaries = new ToolStripMenuItem("Quitar todos los summaries");
-            clearSummaries.Click += delegate { ClearSummaryRows(); MarkChanged(); };
-            summaries.DropDownItems.Add(clearSummaries);
-            menu.Items.Add(summaries);
-
-            var designer = new ToolStripMenuItem("Diseñar vista...");
-            designer.Click += delegate { ToggleDesigner(); };
-            menu.Items.Add(designer);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            var restore = new ToolStripMenuItem("Restaurar vista predeterminada");
-            restore.Click += delegate { ApplyDefaultLayout(); };
-            menu.Items.Add(restore);
-
-            ShowContextMenu(menu);
-        }
-
-        private ToolStripMenuItem CreateSummaryMenuItem(string text, string summaryType)
-        {
-            var item = new ToolStripMenuItem(text);
-            item.Click += delegate
-            {
-                GridColumn column = GetCurrentColumn();
-
-                if (column == null || string.IsNullOrWhiteSpace(column.MappingName))
-                {
-                    MessageBox.Show(owner, "Selecciona una celda de la columna que quieres resumir.", "Summary row", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                string format = null;
-                numericFormats.TryGetValue(column.MappingName, out format);
-
-                if (string.Equals(summaryType, "Count", StringComparison.OrdinalIgnoreCase))
-                    format = "N0";
-
-                AddOrReplaceSummary(column.MappingName, summaryType, string.IsNullOrWhiteSpace(format) ? "N2" : format);
-                MarkChanged();
-            };
-
-            return item;
-        }
-
-        private void ShowSummaryEditor()
-        {
-            using (var dialog = new GenesysGridSummaryPrompt(grid, numericFormats))
-            {
-                if (dialog.ShowDialog(owner) != DialogResult.OK)
-                    return;
-
-                AddOrReplaceSummary(dialog.ColumnName, dialog.SummaryTypeName, dialog.NumericFormat);
-                MarkChanged();
-            }
-        }
-
-        private void ShowContextMenu(ContextMenuStrip menu)
-        {
-            if (button != null)
-            {
-                ToolStrip ownerStrip = button.GetCurrentParent();
-
-                if (ownerStrip != null)
-                {
-                    menu.Show(ownerStrip, new Point(button.Bounds.Left, button.Bounds.Bottom));
-                    return;
-                }
-            }
-
-            if (owner != null)
-            {
-                Point point = owner.PointToClient(Cursor.Position);
-                menu.Show(owner, point);
-            }
+            menuService.ShowMenu();
         }
 
         private bool SaveCurrentView(string viewName)
         {
-            if (string.IsNullOrWhiteSpace(viewName) || IsDefaultView(viewName))
-                return SaveAsNewView();
-
-            var layout = CaptureLayout(viewName);
-            store.Save(layout);
-            currentViewName = viewName;
-            hasChanges = false;
-            PersistCurrentViewName();
-            UpdateButtonState();
-            return true;
+            return persistenceService.SaveCurrentView(viewName);
         }
 
         private bool SaveAsNewView()
         {
-            string name = GenesysGridViewPrompt.Ask("Nueva vista", "Nombre de la vista:", IsDefaultView(currentViewName) ? string.Empty : currentViewName);
-
-            if (string.IsNullOrWhiteSpace(name))
-                return false;
-
-            return SaveCurrentView(name);
+            return persistenceService.SaveAsNewView();
         }
 
         private void DuplicateView()
         {
-            string baseName = IsDefaultView(currentViewName) ? "Nueva vista" : currentViewName + " copia";
-            string name = GenesysGridViewPrompt.Ask("Duplicar vista", "Nuevo nombre:", baseName);
-
-            if (string.IsNullOrWhiteSpace(name))
-                return;
-
-            SaveCurrentView(name);
+            persistenceService.DuplicateView();
         }
 
         private void DeleteViewFromMenu()
         {
-            IList<GenesysGridViewLayout> views = store.Load(gridKey);
-
-            if (views == null || views.Count == 0)
-            {
-                MessageBox.Show(owner, "No hay vistas guardadas para eliminar.", "Eliminar vista", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            string viewName = currentViewName;
-
-            if (IsDefaultView(viewName))
-                viewName = GenesysGridViewPrompt.Ask("Eliminar vista", "Nombre de la vista a eliminar:", string.Empty);
-
-            if (string.IsNullOrWhiteSpace(viewName) || IsDefaultView(viewName))
-                return;
-
-            bool exists = views.Any(x => string.Equals(x.ViewName, viewName, StringComparison.OrdinalIgnoreCase));
-
-            if (!exists)
-            {
-                MessageBox.Show(owner, "No se encontró la vista '" + viewName + "'.", "Eliminar vista", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            DeleteView(viewName);
+            persistenceService.DeleteViewFromMenu();
         }
 
         private void DeleteView(string viewName)
         {
-            if (string.IsNullOrWhiteSpace(viewName) || IsDefaultView(viewName))
-                return;
-
-            DialogResult result = MessageBox.Show(
-                owner,
-                "¿Deseas eliminar la vista '" + viewName + "'? Esta acción no se puede deshacer.",
-                "Eliminar vista",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result != DialogResult.Yes)
-                return;
-
-            store.Delete(gridKey, viewName);
-
-            if (string.Equals(currentViewName, viewName, StringComparison.OrdinalIgnoreCase))
-            {
-                ApplyDefaultLayout();
-                return;
-            }
-
-            UpdateButtonState();
+            persistenceService.DeleteView(viewName);
         }
 
         private void ApplyDefaultLayout()
         {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyDefaultLayout START =====");
+
             isApplyingLayout = true;
 
             try
             {
-                ClearGroupDescriptions();
-                ClearSortDescriptions();
-                ClearSummaryRows();
+                layoutService.ApplyDefaultLayout(defaultNativeGridLayoutXml);
 
-                foreach (GridColumn column in grid.Columns)
-                {
-                    column.Visible = true;
-                }
-
-                grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells;
                 currentViewName = DefaultViewName;
                 hasChanges = false;
                 PersistCurrentViewName();
+
+                System.Diagnostics.Debug.WriteLine("Vista predeterminada aplicada.");
             }
             finally
             {
                 isApplyingLayout = false;
+                skipNextFilterApplication = false;
                 ApplyNumericFormats();
                 UpdateButtonState();
             }
+
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyDefaultLayout END =====");
         }
 
         private GenesysGridViewLayout CaptureLayout(string viewName)
         {
-            var layout = new GenesysGridViewLayout
-            {
-                GridKey = gridKey,
-                ViewName = viewName,
-                CreatedAt = DateTime.Now,
-                ModifiedAt = DateTime.Now
-            };
-
-            int index = 0;
-
-            foreach (GridColumn column in grid.Columns)
-            {
-                layout.Columns.Add(new GenesysGridColumnLayout
-                {
-                    MappingName = column.MappingName,
-                    HeaderText = column.HeaderText,
-                    DisplayIndex = index,
-                    Width = column.Width,
-                    Visible = column.Visible,
-                    Format = column.Format
-                });
-
-                index++;
-            }
-
-            CaptureGroups(layout);
-            CaptureSummaries(layout);
-
-            return layout;
+            return layoutService.Capture(viewName, gridKey, CaptureFilters);
         }
 
         private void ApplyLayout(GenesysGridViewLayout layout)
         {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout START =====");
+
             if (layout == null)
+            {
+                System.Diagnostics.Debug.WriteLine("layout null");
+                System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout END =====");
                 return;
+            }
 
             isApplyingLayout = true;
 
             try
             {
-                ClearGroupDescriptions();
-                ClearSortDescriptions();
-                ClearSummaryRows();
-
-                foreach (var savedColumn in layout.Columns.OrderBy(x => x.DisplayIndex))
-                {
-                    if (string.IsNullOrWhiteSpace(savedColumn.MappingName))
-                        continue;
-
-                    GridColumn column = FindColumn(savedColumn.MappingName);
-                    if (column == null)
-                        continue;
-
-                    column.Visible = savedColumn.Visible;
-
-                    if (savedColumn.Width > 0)
-                        column.Width = savedColumn.Width;
-
-                    if (!string.IsNullOrWhiteSpace(savedColumn.Format))
-                        column.Format = savedColumn.Format;
-                }
-
-                ReorderColumns(layout);
-                ApplyGroups(layout);
-                ApplySummaries(layout);
+                layoutService.Apply(layout);
 
                 currentViewName = layout.ViewName;
                 hasChanges = false;
@@ -504,245 +311,99 @@ namespace Genesys.UI.Components.Controls.GridViews
             finally
             {
                 isApplyingLayout = false;
+                skipNextFilterApplication = false;
                 ApplyNumericFormats();
                 UpdateButtonState();
             }
+
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout END =====");
         }
 
-        private void ReorderColumns(GenesysGridViewLayout layout)
+        
+
+
+        private void CaptureDefaultNativeGridLayoutIfNeeded()
         {
-            int targetIndex = 0;
-
-            foreach (var savedColumn in layout.Columns.OrderBy(x => x.DisplayIndex))
-            {
-                if (string.IsNullOrWhiteSpace(savedColumn.MappingName))
-                    continue;
-
-                GridColumn column = FindColumn(savedColumn.MappingName);
-                if (column == null)
-                    continue;
-
-                int currentIndex = grid.Columns.IndexOf(column);
-
-                if (currentIndex >= 0 && currentIndex != targetIndex)
-                    grid.Columns.Move(currentIndex, targetIndex);
-
-                targetIndex++;
-            }
+            defaultNativeGridLayoutXml =
+                layoutService.CaptureDefaultNativeGridLayoutIfNeeded(defaultNativeGridLayoutXml);
         }
 
-        private void CaptureGroups(GenesysGridViewLayout layout)
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        private void CaptureFilters(GenesysGridViewLayout layout)
         {
-            if (grid.GroupColumnDescriptions == null)
+            if (layout == null)
                 return;
 
-            foreach (var group in grid.GroupColumnDescriptions)
-            {
-                string columnName = GetPropertyAsString(group, "ColumnName");
+            // Las vistas de Genesys SIEMPRE guardan el estado actual de filtros.
+            // La propiedad IncludeFilters se conserva solo por compatibilidad con XML antiguos.
+            layout.IncludeFilters = true;
 
-                if (!string.IsNullOrWhiteSpace(columnName))
-                    layout.Groups.Add(new GenesysGridGroupLayout { ColumnName = columnName });
-            }
-        }
-
-        private void ApplyGroups(GenesysGridViewLayout layout)
-        {
-            Action apply = delegate
-            {
-                ClearGroupDescriptionsUnsafe();
-
-                if (layout.Groups == null)
-                    return;
-
-                foreach (var group in layout.Groups)
-                {
-                    if (string.IsNullOrWhiteSpace(group.ColumnName) || FindColumn(group.ColumnName) == null)
-                        continue;
-
-                    grid.GroupColumnDescriptions.Add(new GroupColumnDescription
-                    {
-                        ColumnName = group.ColumnName
-                    });
-                }
-            };
-
-            SafeGridMutation(apply);
-        }
-
-        private void CaptureSummaries(GenesysGridViewLayout layout)
-        {
-            if (grid.TableSummaryRows == null)
+            if (captureFilterStateXml == null)
                 return;
 
-            foreach (var row in grid.TableSummaryRows)
-            {
-                var summaryColumns = GetPropertyValue(row, "SummaryColumns") as System.Collections.IEnumerable;
-
-                if (summaryColumns == null)
-                    continue;
-
-                foreach (var summaryColumn in summaryColumns)
-                {
-                    string mappingName = GetPropertyAsString(summaryColumn, "MappingName");
-                    string name = GetPropertyAsString(summaryColumn, "Name");
-                    string format = GetPropertyAsString(summaryColumn, "Format");
-
-                    if (string.IsNullOrWhiteSpace(mappingName))
-                        mappingName = name;
-
-                    if (string.IsNullOrWhiteSpace(mappingName))
-                        continue;
-
-                    layout.Summaries.Add(new GenesysGridSummaryLayout
-                    {
-                        ColumnName = mappingName,
-                        SummaryType = DetectSummaryType(format),
-                        Format = ExtractFormatFromSummaryFormat(format)
-                    });
-                }
-            }
+            layout.FilterStateXml = captureFilterStateXml();
         }
 
-        private void ApplySummaries(GenesysGridViewLayout layout)
+        private bool ShouldApplyFiltersBeforeLayout(GenesysGridViewLayout layout)
         {
-            ClearSummaryRows();
-
-            if (layout.Summaries == null)
-                return;
-
-            foreach (var summary in layout.Summaries)
-            {
-                if (string.IsNullOrWhiteSpace(summary.ColumnName) || FindColumn(summary.ColumnName) == null)
-                    continue;
-
-                AddOrReplaceSummary(summary.ColumnName, summary.SummaryType, summary.Format);
-            }
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ShouldApplyFiltersBeforeLayout =====");
+            System.Diagnostics.Debug.WriteLine("result: False - panel filters no se aplican desde la vista");
+            return false;
         }
+
+        
+
+        
+
+        
+
+        
 
         public void AddOrReplaceSummary(string columnName, string summaryType, string format)
         {
-            if (string.IsNullOrWhiteSpace(columnName))
-                return;
-
-            GridColumn gridColumn = FindColumn(columnName);
-            if (gridColumn == null)
-                return;
-
-            string aggregateName = NormalizeSummaryType(summaryType);
-            string displayFormat = NormalizeDisplayFormat(aggregateName, format);
-
-            Action apply = delegate
-            {
-                ClearSummaryForColumnUnsafe(columnName);
-
-                GridTableSummaryRow row = GetOrCreateGenesysSummaryRow();
-
-                row.SummaryColumns.Add(new GridSummaryColumn
-                {
-                    Name = columnName + "_" + aggregateName,
-                    MappingName = columnName,
-                    SummaryType = GetSummaryAggregateType(columnName, aggregateName),
-                    Format = displayFormat
-                });
-
-                RefreshGridView();
-            };
-
-            SafeGridMutation(apply);
-        }
-
-        private GridTableSummaryRow GetOrCreateGenesysSummaryRow()
-        {
-            if (grid.TableSummaryRows != null)
-            {
-                foreach (GridTableSummaryRow existingRow in grid.TableSummaryRows)
-                {
-                    if (string.Equals(existingRow.Name, "GenesysSummaryRow", StringComparison.OrdinalIgnoreCase))
-                        return existingRow;
-                }
-            }
-
-            var row = new GridTableSummaryRow
-            {
-                Name = "GenesysSummaryRow",
-                ShowSummaryInRow = false,
-                Position = VerticalPosition.Bottom
-            };
-
-            grid.TableSummaryRows.Add(row);
-            return row;
+            summaryService.AddOrReplaceSummary(columnName, summaryType, format);
         }
 
         public void ClearSummaryForColumn(string columnName)
         {
-            SafeGridMutation(delegate
-            {
-                ClearSummaryForColumnUnsafe(columnName);
-                RefreshGridView();
-            });
-        }
-
-        private void ClearSummaryForColumnUnsafe(string columnName)
-        {
-            if (grid.TableSummaryRows == null || grid.TableSummaryRows.Count == 0)
-                return;
-
-            for (int i = grid.TableSummaryRows.Count - 1; i >= 0; i--)
-            {
-                var row = grid.TableSummaryRows[i];
-                var summaryColumns = GetPropertyValue(row, "SummaryColumns") as System.Collections.IList;
-
-                if (summaryColumns == null)
-                    continue;
-
-                for (int j = summaryColumns.Count - 1; j >= 0; j--)
-                {
-                    string mappingName = GetPropertyAsString(summaryColumns[j], "MappingName");
-                    string name = GetPropertyAsString(summaryColumns[j], "Name");
-
-                    if (string.Equals(mappingName, columnName, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(name, columnName, StringComparison.OrdinalIgnoreCase) ||
-                        (!string.IsNullOrWhiteSpace(name) && name.StartsWith(columnName + "_", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        summaryColumns.RemoveAt(j);
-                    }
-                }
-
-                if (summaryColumns.Count == 0)
-                    grid.TableSummaryRows.RemoveAt(i);
-            }
-        }
-
-        private void ClearGroupDescriptions()
-        {
-            SafeGridMutation(ClearGroupDescriptionsUnsafe);
-        }
-
-        private void ClearGroupDescriptionsUnsafe()
-        {
-            if (grid.GroupColumnDescriptions == null)
-                return;
-
-            for (int i = grid.GroupColumnDescriptions.Count - 1; i >= 0; i--)
-                grid.GroupColumnDescriptions.RemoveAt(i);
-        }
-
-        private void ClearSortDescriptions()
-        {
-            if (grid.SortColumnDescriptions != null)
-                grid.SortColumnDescriptions.Clear();
+            summaryService.ClearSummaryForColumn(columnName);
         }
 
         public void ClearSummaryRows()
         {
-            SafeGridMutation(delegate
-            {
-                if (grid.TableSummaryRows != null)
-                    grid.TableSummaryRows.Clear();
-
-                RefreshGridView();
-            });
+            summaryService.ClearSummaryRows();
         }
+
+        
+
+        
+
+        
 
         private GridColumn GetCurrentColumn()
         {
@@ -785,167 +446,11 @@ namespace Genesys.UI.Components.Controls.GridViews
                    string.Equals(viewName, DefaultViewName, StringComparison.OrdinalIgnoreCase);
         }
 
-        private string NormalizeSummaryType(string summaryType)
-        {
-            if (string.IsNullOrWhiteSpace(summaryType))
-                return "Sum";
+        
 
-            if (string.Equals(summaryType, "Average", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(summaryType, "Avg", StringComparison.OrdinalIgnoreCase))
-                return "Average";
+        
 
-            if (string.Equals(summaryType, "Minimum", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(summaryType, "Min", StringComparison.OrdinalIgnoreCase))
-                return "Min";
-
-            if (string.Equals(summaryType, "Maximum", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(summaryType, "Max", StringComparison.OrdinalIgnoreCase))
-                return "Max";
-
-            if (string.Equals(summaryType, "Count", StringComparison.OrdinalIgnoreCase))
-                return "Count";
-
-            return "Sum";
-        }
-
-        private string NormalizeDisplayFormat(string aggregateName, string numericFormat)
-        {
-            if (string.Equals(aggregateName, "Count", StringComparison.OrdinalIgnoreCase))
-                return "{Count}";
-
-            string format = string.IsNullOrWhiteSpace(numericFormat) ? "N2" : numericFormat;
-            return "{" + aggregateName + ":" + format + "}";
-        }
-
-        private string DetectSummaryType(string summaryFormat)
-        {
-            if (string.IsNullOrWhiteSpace(summaryFormat))
-                return "Sum";
-
-            if (summaryFormat.IndexOf("Average", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Average";
-
-            if (summaryFormat.IndexOf("Minimum", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                summaryFormat.IndexOf("Min", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Min";
-
-            if (summaryFormat.IndexOf("Maximum", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                summaryFormat.IndexOf("Max", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Max";
-
-            if (summaryFormat.IndexOf("Count", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Count";
-
-            return "Sum";
-        }
-
-        private string ExtractFormatFromSummaryFormat(string summaryFormat)
-        {
-            if (string.IsNullOrWhiteSpace(summaryFormat))
-                return "N2";
-
-            int colon = summaryFormat.IndexOf(':');
-            int close = summaryFormat.IndexOf('}', colon + 1);
-
-            if (colon >= 0 && close > colon)
-                return summaryFormat.Substring(colon + 1, close - colon - 1);
-
-            return "N2";
-        }
-
-        private SummaryType GetSummaryAggregateType(string columnName, string aggregateName)
-        {
-            if (string.Equals(aggregateName, "Count", StringComparison.OrdinalIgnoreCase))
-                return SummaryType.CountAggregate;
-
-            Type dataType = GetColumnDataType(columnName);
-
-            if (dataType == typeof(byte) || dataType == typeof(short) || dataType == typeof(int) ||
-                dataType == typeof(long) || dataType == typeof(byte?) || dataType == typeof(short?) ||
-                dataType == typeof(int?) || dataType == typeof(long?))
-                return SummaryType.Int32Aggregate;
-
-            return SummaryType.DoubleAggregate;
-        }
-
-        private Type GetColumnDataType(string columnName)
-        {
-            try
-            {
-                var dataView = grid.DataSource as System.Data.DataView;
-                if (dataView != null && dataView.Table != null && dataView.Table.Columns.Contains(columnName))
-                    return dataView.Table.Columns[columnName].DataType;
-
-                var dataTable = grid.DataSource as System.Data.DataTable;
-                if (dataTable != null && dataTable.Columns.Contains(columnName))
-                    return dataTable.Columns[columnName].DataType;
-            }
-            catch
-            {
-            }
-
-            return typeof(double);
-        }
-
-        private void SafeGridMutation(Action action)
-        {
-            if (action == null)
-                return;
-
-            try
-            {
-                action();
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                DeferGridMutation(action);
-            }
-            catch (InvalidOperationException)
-            {
-                DeferGridMutation(action);
-            }
-        }
-
-        private void DeferGridMutation(Action action)
-        {
-            if (grid == null || grid.IsDisposed || !grid.IsHandleCreated)
-                return;
-
-            grid.BeginInvoke(new MethodInvoker(delegate
-            {
-                try
-                {
-                    action();
-                    RefreshGridView();
-                }
-                catch
-                {
-                    // Se evita romper la pantalla por estados transitorios internos del grid.
-                    // La siguiente carga/aplicación de vista volverá a sincronizar el estado.
-                }
-            }));
-        }
-
-        private void RefreshGridView()
-        {
-            try
-            {
-                if (grid.View != null)
-                    grid.View.Refresh();
-            }
-            catch
-            {
-            }
-
-            try
-            {
-                grid.Refresh();
-                grid.Invalidate();
-            }
-            catch
-            {
-            }
-        }
+        
 
         private object GetPropertyValue(object instance, string propertyName)
         {
@@ -977,10 +482,7 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         public bool SaveCurrentOrAsk()
         {
-            if (IsDefaultView(currentViewName))
-                return SaveAsNewView();
-
-            return SaveCurrentView(currentViewName);
+            return persistenceService.SaveCurrentOrAsk();
         }
 
         public bool ConfirmPendingChangesBeforeClose(IWin32Window dialogOwner)
@@ -1027,7 +529,7 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return null;
 
             string format = column.Format;
-            string summaryType = GetSummaryTypeForColumn(column.MappingName);
+            string summaryType = summaryService.GetSummaryTypeForColumn(column.MappingName);
 
             return new GenesysGridColumnProfile
             {
@@ -1138,30 +640,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             return 2;
         }
 
-        private string GetSummaryTypeForColumn(string columnName)
-        {
-            if (grid.TableSummaryRows == null)
-                return "None";
-
-            foreach (var row in grid.TableSummaryRows)
-            {
-                var summaryColumns = GetPropertyValue(row, "SummaryColumns") as System.Collections.IEnumerable;
-                if (summaryColumns == null)
-                    continue;
-
-                foreach (var summaryColumn in summaryColumns)
-                {
-                    string mappingName = GetPropertyAsString(summaryColumn, "MappingName");
-                    string format = GetPropertyAsString(summaryColumn, "Format");
-
-                    if (string.Equals(mappingName, columnName, StringComparison.OrdinalIgnoreCase))
-                        return DetectSummaryType(format);
-                }
-            }
-
-            return "None";
-        }
-
         private bool IsColumnGrouped(string columnName)
         {
             if (grid.GroupColumnDescriptions == null)
@@ -1238,6 +716,48 @@ namespace Genesys.UI.Components.Controls.GridViews
                 property.SetValue(grid, index + 1, null);
         }
 
+        
+
+        
+
+        
+
+        private void HookDynamicGridEvent(string eventName)
+        {
+            try
+            {
+                if (grid == null || string.IsNullOrWhiteSpace(eventName))
+                    return;
+
+                EventInfo eventInfo = grid.GetType().GetEvent(eventName, BindingFlags.Instance | BindingFlags.Public);
+                if (eventInfo == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Grid event not found: " + eventName);
+                    return;
+                }
+
+                Delegate handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, this, "Grid_GenericChanged", false);
+                if (handler == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("No se pudo crear handler para evento: " + eventName);
+                    return;
+                }
+
+                eventInfo.AddEventHandler(grid, handler);
+                dynamicGridEventHandlers.Add(new Tuple<EventInfo, Delegate>(eventInfo, handler));
+                System.Diagnostics.Debug.WriteLine("Grid event hooked: " + eventName);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("HookDynamicGridEvent ERROR " + eventName + ": " + ex.Message);
+            }
+        }
+
+        private void Grid_GenericChanged(object sender, EventArgs e)
+        {
+            MarkChanged();
+        }
+
         private void HookGridEvents()
         {
             grid.ColumnDragging -= Grid_ColumnDragging;
@@ -1245,6 +765,12 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             grid.ColumnResizing -= Grid_ColumnResizing;
             grid.ColumnResizing += Grid_ColumnResizing;
+
+            HookDynamicGridEvent("FilterChanged");
+            HookDynamicGridEvent("FilterChanging");
+            HookDynamicGridEvent("SortColumnsChanged");
+            HookDynamicGridEvent("SortColumnsChanging");
+            HookDynamicGridEvent("SortChanged");
         }
 
         private void Grid_ColumnDragging(object sender, ColumnDraggingEventArgs e)
@@ -1261,24 +787,44 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             PersistCurrentViewName();
 
-            if (currentMenu != null)
+            foreach (var item in dynamicGridEventHandlers.ToArray())
             {
-                currentMenu.Close();
-                currentMenu.Dispose();
-                currentMenu = null;
+                try
+                {
+                    item.Item1.RemoveEventHandler(grid, item.Item2);
+                }
+                catch
+                {
+                }
             }
+
+            dynamicGridEventHandlers.Clear();
+
+            if (menuService != null)
+                menuService.Dispose();
         }
 
         private void UpdateButtonState()
         {
-            if (button == null)
+            if (button != null)
+            {
+                button.Text = hasChanges ? "⋮•" : "⋮";
+                button.ForeColor = hasChanges ? Color.DarkOrange : Color.MidnightBlue;
+                button.ToolTipText = hasChanges
+                    ? "Vista activa: " + currentViewName + " - cambios sin guardar"
+                    : "Vista activa: " + currentViewName;
+            }
+
+            UpdateOwnerTitle();
+        }
+
+        private void UpdateOwnerTitle()
+        {
+            if (owner == null)
                 return;
 
-            button.Text = hasChanges ? "⋮•" : "⋮";
-            button.ForeColor = hasChanges ? Color.DarkOrange : Color.MidnightBlue;
-            button.ToolTipText = hasChanges
-                ? "Vistas del grid - cambios sin guardar"
-                : "Vistas del grid";
+            string suffix = " - Vista: " + currentViewName + (hasChanges ? " *" : string.Empty);
+            owner.Text = (ownerBaseText ?? string.Empty) + suffix;
         }
     }
 }

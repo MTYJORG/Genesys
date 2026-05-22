@@ -2,7 +2,6 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
@@ -27,13 +26,14 @@ namespace Genesys.UI.Components.Controls.GridViews
         private string currentViewName;
         private bool isApplyingLayout;
         private bool hasChanges;
+        private bool skipNextFilterApplication;
         private Func<string> captureFilterStateXml;
         private Action<string> applyFilterStateXml;
         private Action executeSearch;
         private readonly GenesysGridViewMenuService menuService;
+        private readonly string ownerBaseText;
         private readonly List<Tuple<EventInfo, Delegate>> dynamicGridEventHandlers = new List<Tuple<EventInfo, Delegate>>();
-        private INotifyCollectionChanged sortDescriptionsNotifier;
-        private bool normalizeSelectionAfterSortPending;
+        private string defaultNativeGridLayoutXml;
 
         public GenesysGridViewManager(Form owner, SfDataGrid grid, ToolStripButton button, string gridKey)
             : this(owner, grid, button, gridKey, new GenesysGridViewFileStore())
@@ -78,7 +78,7 @@ namespace Genesys.UI.Components.Controls.GridViews
                 persistenceService.LoadViews,
                 delegate { return currentViewName; },
                 IsDefaultView,
-                ApplyDefaultViewAndRefresh,
+                ApplyDefaultLayout,
                 ApplyLayout,
                 SaveCurrentOrAsk,
                 SaveAsNewView,
@@ -89,6 +89,7 @@ namespace Genesys.UI.Components.Controls.GridViews
                 ClearSummaryForColumn,
                 ClearSummaryRows,
                 MarkChanged);
+            ownerBaseText = owner == null ? string.Empty : owner.Text;
         }
 
         public bool HasChanges
@@ -104,6 +105,11 @@ namespace Genesys.UI.Components.Controls.GridViews
         public bool IsCurrentViewDefault
         {
             get { return IsDefaultView(currentViewName); }
+        }
+
+        public bool IsApplyingFilterSearch
+        {
+            get { return skipNextFilterApplication; }
         }
 
 
@@ -155,47 +161,48 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         public void ReapplyCurrentView()
         {
-            ApplyCurrentView();
-        }
-
-        public GenesysGridViewLayout GetCurrentViewLayout()
-        {
-            if (IsDefaultView(currentViewName))
-                return null;
-
-            var views = persistenceService.LoadViews();
-
-            if (views == null)
-                return null;
-
-            return views.FirstOrDefault(x =>
-                string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public void ApplyCurrentViewLayoutBeforePaint()
-        {
-            ApplyCurrentView();
-        }
-
-        public void ReapplyCurrentViewLayoutOnly()
-        {
-            ApplyCurrentView();
-        }
-
-        private void ApplyCurrentView()
-        {
             if (IsDefaultView(currentViewName))
             {
                 ApplyDefaultLayout();
                 return;
             }
 
-            GenesysGridViewLayout layout = GetCurrentViewLayout();
+            var views = persistenceService.LoadViews();
+            var layout = views.FirstOrDefault(x =>
+                string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
 
             if (layout != null)
+            {
+                CaptureDefaultNativeGridLayoutIfNeeded();
                 ApplyLayout(layout);
+            }
             else
                 ApplyDefaultLayout();
+        }
+
+        public void ReapplyCurrentViewLayoutOnly()
+        {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly START =====");
+            System.Diagnostics.Debug.WriteLine("CurrentViewName: " + currentViewName);
+
+            if (IsDefaultView(currentViewName))
+            {
+                System.Diagnostics.Debug.WriteLine("Vista predeterminada activa; no se reaplica layout guardado.");
+                System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly END =====");
+                return;
+            }
+
+            var views = persistenceService.LoadViews();
+            var layout = views.FirstOrDefault(x =>
+                string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
+
+            if (layout != null)
+            {
+                CaptureDefaultNativeGridLayoutIfNeeded();
+                ApplyLayout(layout);
+            }
+
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ReapplyCurrentViewLayoutOnly END =====");
         }
 
         public void MarkClean()
@@ -245,81 +252,29 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         private void ApplyDefaultLayout()
         {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyDefaultLayout START =====");
+
             isApplyingLayout = true;
 
             try
             {
-                layoutService.ApplyDefaultLayout(null);
+                layoutService.ApplyDefaultLayout(defaultNativeGridLayoutXml);
 
                 currentViewName = DefaultViewName;
                 hasChanges = false;
                 PersistCurrentViewName();
+
+                System.Diagnostics.Debug.WriteLine("Vista predeterminada aplicada.");
             }
             finally
             {
                 isApplyingLayout = false;
+                skipNextFilterApplication = false;
                 ApplyNumericFormats();
                 UpdateButtonState();
             }
-        }
 
-        public void ApplyDefaultViewAndRefresh()
-        {
-            isApplyingLayout = true;
-
-            try
-            {
-                currentViewName = DefaultViewName;
-                hasChanges = false;
-
-                try
-                {
-                    if (grid.GroupColumnDescriptions != null)
-                        grid.GroupColumnDescriptions.Clear();
-                }
-                catch
-                {
-                }
-
-                try
-                {
-                    if (grid.SortColumnDescriptions != null)
-                        grid.SortColumnDescriptions.Clear();
-                }
-                catch
-                {
-                }
-
-                try
-                {
-                    if (grid.TableSummaryRows != null)
-                        grid.TableSummaryRows.Clear();
-                }
-                catch
-                {
-                }
-
-                try
-                {
-                    if (grid.Columns != null)
-                        grid.Columns.Clear();
-                }
-                catch
-                {
-                }
-
-                grid.AutoGenerateColumns = true;
-
-                PersistCurrentViewName();
-                UpdateButtonState();
-            }
-            finally
-            {
-                isApplyingLayout = false;
-            }
-
-            if (executeSearch != null)
-                executeSearch();
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyDefaultLayout END =====");
         }
 
         private GenesysGridViewLayout CaptureLayout(string viewName)
@@ -329,14 +284,20 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         private void ApplyLayout(GenesysGridViewLayout layout)
         {
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout START =====");
+
             if (layout == null)
+            {
+                System.Diagnostics.Debug.WriteLine("layout null");
+                System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout END =====");
                 return;
+            }
 
             isApplyingLayout = true;
 
             try
             {
-                layoutService.Apply(layout, false);
+                layoutService.Apply(layout);
 
                 currentViewName = layout.ViewName;
                 hasChanges = false;
@@ -345,10 +306,36 @@ namespace Genesys.UI.Components.Controls.GridViews
             finally
             {
                 isApplyingLayout = false;
+                skipNextFilterApplication = false;
                 ApplyNumericFormats();
                 UpdateButtonState();
             }
+
+            System.Diagnostics.Debug.WriteLine("===== GRID VIEW MANAGER: ApplyLayout END =====");
         }
+
+        
+
+
+        private void CaptureDefaultNativeGridLayoutIfNeeded()
+        {
+            defaultNativeGridLayoutXml =
+                layoutService.CaptureDefaultNativeGridLayoutIfNeeded(defaultNativeGridLayoutXml);
+        }
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
 
         
 
@@ -377,6 +364,12 @@ namespace Genesys.UI.Components.Controls.GridViews
             layout.FilterStateXml = captureFilterStateXml();
         }
 
+     
+
+        
+
+        
+
         
 
         
@@ -395,6 +388,10 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             summaryService.ClearSummaryRows();
         }
+
+        
+
+        
 
         
 
@@ -441,6 +438,10 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         
 
+        
+
+        
+
         private object GetPropertyValue(object instance, string propertyName)
         {
             if (instance == null || string.IsNullOrWhiteSpace(propertyName))
@@ -459,28 +460,8 @@ namespace Genesys.UI.Components.Controls.GridViews
             return value == null ? null : Convert.ToString(value);
         }
 
-        private void SetPropertyValue(object instance, string propertyName, object value)
-        {
-            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
-                return;
-
-            try
-            {
-                var property = instance.GetType().GetProperty(propertyName);
-
-                if (property == null || !property.CanWrite)
-                    return;
-
-                property.SetValue(instance, value, null);
-            }
-            catch
-            {
-            }
-        }
-
 
         public event EventHandler DesignerRequested;
-        public event EventHandler ViewChanged;
 
         public void ToggleDesigner()
         {
@@ -727,6 +708,10 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         
 
+        
+
+        
+
         private void HookDynamicGridEvent(string eventName)
         {
             try
@@ -776,75 +761,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             HookDynamicGridEvent("SortColumnsChanged");
             HookDynamicGridEvent("SortColumnsChanging");
             HookDynamicGridEvent("SortChanged");
-
-            HookSortDescriptionsChanged();
-        }
-
-
-        private void HookSortDescriptionsChanged()
-        {
-            if (sortDescriptionsNotifier != null)
-                sortDescriptionsNotifier.CollectionChanged -= SortDescriptions_CollectionChanged;
-
-            sortDescriptionsNotifier = grid == null
-                ? null
-                : grid.SortColumnDescriptions as INotifyCollectionChanged;
-
-            if (sortDescriptionsNotifier != null)
-                sortDescriptionsNotifier.CollectionChanged += SortDescriptions_CollectionChanged;
-        }
-
-        private void SortDescriptions_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (isApplyingLayout)
-                return;
-
-            QueueNormalizeSelectionAfterSort();
-            MarkChanged();
-        }
-
-        private void QueueNormalizeSelectionAfterSort()
-        {
-            if (normalizeSelectionAfterSortPending)
-                return;
-
-            if (grid == null || grid.IsDisposed || !grid.IsHandleCreated)
-                return;
-
-            normalizeSelectionAfterSortPending = true;
-
-            grid.BeginInvoke(new MethodInvoker(delegate
-            {
-                normalizeSelectionAfterSortPending = false;
-                NormalizeSelectionToFirstVisibleRecord();
-            }));
-        }
-
-        private void NormalizeSelectionToFirstVisibleRecord()
-        {
-            try
-            {
-                if (grid == null || grid.View == null || grid.View.Records == null)
-                    return;
-
-                if (grid.View.Records.Count == 0)
-                    return;
-
-                object record = grid.View.Records[0];
-                object data = GetPropertyValue(record, "Data");
-
-                if (data == null)
-                    data = GetPropertyValue(record, "Record");
-
-                if (data == null)
-                    data = record;
-
-                grid.SelectedItem = data;
-                SetPropertyValue(grid, "CurrentItem", data);
-            }
-            catch
-            {
-            }
         }
 
         private void Grid_ColumnDragging(object sender, ColumnDraggingEventArgs e)
@@ -860,12 +776,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         public void Dispose()
         {
             PersistCurrentViewName();
-
-            if (sortDescriptionsNotifier != null)
-            {
-                sortDescriptionsNotifier.CollectionChanged -= SortDescriptions_CollectionChanged;
-                sortDescriptionsNotifier = null;
-            }
 
             foreach (var item in dynamicGridEventHandlers.ToArray())
             {
@@ -895,8 +805,16 @@ namespace Genesys.UI.Components.Controls.GridViews
                     : "Vista activa: " + currentViewName;
             }
 
-            if (ViewChanged != null)
-                ViewChanged(this, EventArgs.Empty);
+            UpdateOwnerTitle();
+        }
+
+        private void UpdateOwnerTitle()
+        {
+            if (owner == null)
+                return;
+
+            string suffix = " - Vista: " + currentViewName + (hasChanges ? " *" : string.Empty);
+            owner.Text = (ownerBaseText ?? string.Empty) + suffix;
         }
     }
 }

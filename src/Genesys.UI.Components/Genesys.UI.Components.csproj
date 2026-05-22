@@ -134,17 +134,12 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\Filters\GenesysGridFilterState.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridColumnLayout.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridColumnProfile.cs" />
     <Compile Include="Controls\GridViews\GenesysGridConfigurator.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridGroupLayout.cs" />
     <Compile Include="Controls\GridViews\GenesysGridLayoutService.cs" />
     <Compile Include="Controls\GridViews\GenesysGridNavigator.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Controls\GridViews\GenesysGridSortLayout.cs" />
     <Compile Include="Controls\GridViews\GenesysGridSummaryCellRenderer.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridSummaryLayout.cs" />
     <Compile Include="Controls\GridViews\GenesysGridSummaryPrompt.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -153,12 +148,11 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\GridViews\GenesysGridViewFileStore.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridViewLayout.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewManager.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewMenuService.cs" />
+    <Compile Include="Controls\GridViews\GenesysGridViewModels.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewPersistenceService.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewPrompt.cs" />
-    <Compile Include="Controls\GridViews\GenesysGridViewState.cs" />
     <Compile Include="Controls\GridViews\GenesysNavigatorButton.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -172,6 +166,7 @@
     <Compile Include="Controls\Toolbar\GenesysToolbar.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Diagnostics\GenesysTrace.cs" />
     <Compile Include="Forms\GenesysBaseForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -190,6 +185,7 @@
     <Compile Include="Forms\GenesysStandardForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\Services\GenesysGridExportService.cs" />
     <Compile Include="GenesysUI.cs" />
     <Compile Include="Controls\Toolbar\BotonInfo.cs" />
     <Compile Include="Controls\Toolbar\BotonTipo.cs" />

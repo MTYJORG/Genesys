@@ -47,7 +47,7 @@ namespace Genesys.UI.Forms
         private DataTable _datosActuales;
         private bool _suprimirCarga = true;
         private string _nombreVistaActual;
-        private Dictionary<string, double> _anchosOriginales;
+        //private Dictionary<string, double> _anchosOriginales;
         
         // protected para que el hijo lo acceda
         protected System.Data.DataRow _rowCodigoSeleccionado;  

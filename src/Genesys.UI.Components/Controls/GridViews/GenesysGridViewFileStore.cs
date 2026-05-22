@@ -59,7 +59,7 @@ namespace Genesys.UI.Components.Controls.GridViews
                 {
                     System.Diagnostics.Debug.WriteLine("ViewName: " + layout.ViewName);
                     System.Diagnostics.Debug.WriteLine("FilterStateXml length: " + (layout.FilterStateXml == null ? 0 : layout.FilterStateXml.Length));
-                    System.Diagnostics.Debug.WriteLine("NativeGridLayoutXml length: " + (layout.NativeGridLayoutXml == null ? 0 : layout.NativeGridLayoutXml.Length));
+                    //System.Diagnostics.Debug.WriteLine("NativeGridLayoutXml length: " + (layout.NativeGridLayoutXml == null ? 0 : layout.NativeGridLayoutXml.Length));
                     System.Diagnostics.Debug.WriteLine("Sorts: " + (layout.Sorts == null ? 0 : layout.Sorts.Count));
                     result.Add(layout);
                 }
@@ -89,7 +89,7 @@ namespace Genesys.UI.Components.Controls.GridViews
             System.Diagnostics.Debug.WriteLine("Summaries: " + (layout.Summaries == null ? 0 : layout.Summaries.Count));
             System.Diagnostics.Debug.WriteLine("Sorts: " + (layout.Sorts == null ? 0 : layout.Sorts.Count));
             System.Diagnostics.Debug.WriteLine("FilterStateXml length: " + (layout.FilterStateXml == null ? 0 : layout.FilterStateXml.Length));
-            System.Diagnostics.Debug.WriteLine("NativeGridLayoutXml length: " + (layout.NativeGridLayoutXml == null ? 0 : layout.NativeGridLayoutXml.Length));
+            //System.Diagnostics.Debug.WriteLine("NativeGridLayoutXml length: " + (layout.NativeGridLayoutXml == null ? 0 : layout.NativeGridLayoutXml.Length));
 
             if (string.IsNullOrWhiteSpace(layout.GridKey))
                 throw new ArgumentException("GridKey requerido.");
@@ -132,11 +132,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             string path = GetStatePath(gridKey);
 
-            System.Diagnostics.Debug.WriteLine("===== GRID VIEW FILE STORE: LoadCurrentViewName =====");
-            System.Diagnostics.Debug.WriteLine("GridKey: " + gridKey);
-            System.Diagnostics.Debug.WriteLine("Path: " + path);
-            System.Diagnostics.Debug.WriteLine("Exists: " + File.Exists(path));
-
             if (!File.Exists(path))
                 return null;
 
@@ -146,25 +141,17 @@ namespace Genesys.UI.Components.Controls.GridViews
                 using (var stream = File.OpenRead(path))
                 {
                     GenesysGridViewState state = serializer.Deserialize(stream) as GenesysGridViewState;
-                    System.Diagnostics.Debug.WriteLine("State null: " + (state == null));
-                    System.Diagnostics.Debug.WriteLine("CurrentViewName: " + (state == null ? string.Empty : state.CurrentViewName));
                     return state == null ? null : state.CurrentViewName;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("LoadCurrentViewName ERROR: " + ex);
                 return null;
             }
         }
 
         public void SaveCurrentViewName(string gridKey, string viewName)
         {
-            System.Diagnostics.Debug.WriteLine("===== GRID VIEW FILE STORE: SaveCurrentViewName =====");
-            System.Diagnostics.Debug.WriteLine("GridKey: " + gridKey);
-            System.Diagnostics.Debug.WriteLine("ViewName: " + viewName);
-            System.Diagnostics.Debug.WriteLine("Path: " + GetStatePath(gridKey));
-
             if (string.IsNullOrWhiteSpace(gridKey))
                 return;
 
@@ -199,7 +186,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Read ERROR: " + ex);
                 return null;
             }
         }

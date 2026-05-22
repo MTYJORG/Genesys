@@ -23,7 +23,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         private ToolStripButton btnLast;
         private ToolStripTextBox txtPosition;
         private ToolStripTextBox txtTotal;
-        private ToolStripLabel lblStatus;
         
         private Panel hostPanel;
 

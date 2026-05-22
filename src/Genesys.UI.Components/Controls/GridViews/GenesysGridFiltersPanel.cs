@@ -629,9 +629,14 @@ namespace Genesys.UI.Components.Controls.Filters
             return null;
         }
         
-        public void RefreshSearch()
+        public void ForceSearch()
         {
             ExecuteSearch(force: true);
+        }
+
+        public void RefreshSearch()
+        {
+            ForceSearch();
         }
     }
 }

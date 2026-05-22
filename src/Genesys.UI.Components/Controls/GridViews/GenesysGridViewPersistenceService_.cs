@@ -94,6 +94,7 @@ namespace Genesys.UI.Components.Controls.GridViews
                 System.Diagnostics.Debug.WriteLine("Summaries: " + (layout.Summaries == null ? 0 : layout.Summaries.Count));
                 System.Diagnostics.Debug.WriteLine("Sorts: " + (layout.Sorts == null ? 0 : layout.Sorts.Count));
                 System.Diagnostics.Debug.WriteLine("FilterStateXml length: " + (layout.FilterStateXml == null ? 0 : layout.FilterStateXml.Length));
+                System.Diagnostics.Debug.WriteLine("NativeGridLayoutXml length: " + (layout.NativeGridLayoutXml == null ? 0 : layout.NativeGridLayoutXml.Length));
             }
 
             try

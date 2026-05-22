@@ -24,7 +24,6 @@ namespace Genesys.UI.Components.Forms
         private const int FiltersPanelHeight = 65;
         private const int MessagesPanelHeight = 49;
         private const int InfoPanelHeight = 26;
-        private const int ViewInfoPanelHeight = 26;
         private const int ToolbarConfigPanelWidth = 44;
         private const int ConfigButtonWidth = 40;
         private const int ConfigButtonHeight = 42;
@@ -36,12 +35,11 @@ namespace Genesys.UI.Components.Forms
         private readonly Dictionary<string, string> gridNumericFormats;
         private GenesysGridViewManager gridViewManager;
         private bool filtersRestored;
+        private bool firstViewApplyPending = true;
         private ToolStripEx configToolStrip;
         private ToolStripButton btnConfig;
         private Font configButtonFont;
         private bool disposed;
-        private GenesysGridFilterResult pendingFilterResult;
-        private bool filterResultBindScheduled;
 
         private GenesysGridExportService exportService;
         
@@ -52,8 +50,6 @@ namespace Genesys.UI.Components.Forms
         public Panel GridPanel { get; private set; }
         public TableLayoutPanel GridWorkspacePanel { get; private set; }
         public Panel InfoPanel { get; private set; }
-        public Panel ViewInfoPanel { get; private set; }
-        public Label CurrentViewLabel { get; private set; }
         public Panel ToolbarHostPanel { get; private set; }
         public Panel ToolbarConfigPanel { get; private set; }
         public Panel ViewDesignerHostPanel { get; private set; }
@@ -98,11 +94,9 @@ namespace Genesys.UI.Components.Forms
             BuildGridNavigator();
             BuildViewDesigner();
             BuildGridViewManager();
-            BuildViewInfo();
 
             Controls.Add(GridWorkspacePanel);
             Controls.Add(InfoPanel);
-            Controls.Add(ViewInfoPanel);
             Controls.Add(FiltersPanel);
             Controls.Add(MessagesPanel);
             Controls.Add(ButtonsPanel);
@@ -112,7 +106,6 @@ namespace Genesys.UI.Components.Forms
             ResumeLayout(true);
             PerformLayout();
 
-            Filters.SearchCompleted -= Filters_SearchCompleted;
             Filters.SearchCompleted += Filters_SearchCompleted;
         }
 
@@ -142,12 +135,6 @@ namespace Genesys.UI.Components.Forms
                 height: InfoPanelHeight,
                 backColor: Color.AliceBlue);
 
-            ViewInfoPanel = GenesysPanelFactory.Create(
-                "ViewInfoPanel",
-                DockStyle.Top,
-                height: ViewInfoPanelHeight,
-                backColor: Color.White);
-
             GridPanel = GenesysPanelFactory.Create(
                 "GridPanel",
                 DockStyle.Fill,
@@ -173,31 +160,13 @@ namespace Genesys.UI.Components.Forms
             FiltersPanel.TabStop = false;
             MessagesPanel.TabStop = false;
             InfoPanel.TabStop = false;
-            ViewInfoPanel.TabStop = false;
             GridPanel.TabStop = false;
 
             GenesysControlVisual.EnableDoubleBuffer(ButtonsPanel);
             GenesysControlVisual.EnableDoubleBuffer(FiltersPanel);
             GenesysControlVisual.EnableDoubleBuffer(MessagesPanel);
             GenesysControlVisual.EnableDoubleBuffer(InfoPanel);
-            GenesysControlVisual.EnableDoubleBuffer(ViewInfoPanel);
             GenesysControlVisual.EnableDoubleBuffer(GridPanel);
-        }
-
-        private void BuildViewInfo()
-        {
-            CurrentViewLabel = new Label
-            {
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleRight,
-                Padding = new Padding(0, 0, 10, 0),
-                ForeColor = Color.MidnightBlue,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                Text = "Vista: Predeterminada",
-                AutoEllipsis = true
-            };
-
-            ViewInfoPanel.Controls.Add(CurrentViewLabel);
         }
 
         private void BuildGridNavigator()
@@ -386,8 +355,6 @@ namespace Genesys.UI.Components.Forms
                 ExecuteFiltersSearch);
 
             gridViewManager.DesignerRequested += GridViewManager_DesignerRequested;
-            gridViewManager.ViewChanged += GridViewManager_ViewChanged;
-            GridViewManager_ViewChanged(this, EventArgs.Empty);
 
             if (ViewDesigner != null)
                 ViewDesigner.Attach(gridViewManager);
@@ -455,26 +422,33 @@ namespace Genesys.UI.Components.Forms
         protected void BindGridDataTable(DataTable table)
         {
             if (table == null)
+            {
                 return;
-
-            GenesysGridViewLayout activeLayout = null;
-
-            if (gridViewManager != null && !gridViewManager.IsCurrentViewDefault)
-                activeLayout = gridViewManager.GetCurrentViewLayout();
+            }
 
             GenesysGridConfigurator.BindDataTable(
                 Grid,
                 table,
-                GetGridNumericFormats(),
-                activeLayout);
+                GetGridNumericFormats());
 
-            if (gridViewManager != null && activeLayout != null)
-                gridViewManager.ReapplyCurrentViewLayoutOnly();
+            bool shouldReapplyView = false;
+
+            if (gridViewManager != null)
+            {
+                shouldReapplyView =
+                    firstViewApplyPending ||
+                    gridViewManager.IsApplyingFilterSearch;
+            }
+
+            if (shouldReapplyView)
+            {
+                firstViewApplyPending = false;
+                gridViewManager.ReapplyCurrentView();
+            }
 
             ViewDesigner?.ReloadColumns();
             GridNavigator?.NotifyDataBound();
         }
-
 
         // ─── Toolbar ──────────────────────────────────────────────────────────
 
@@ -580,7 +554,7 @@ namespace Genesys.UI.Components.Forms
         {
             if (Filters == null) return;
 
-            Filters.RefreshSearch();
+            Filters.ExecuteSearch();
 
             RefrescarRequested?.Invoke(this, EventArgs.Empty);
         }
@@ -677,14 +651,6 @@ namespace Genesys.UI.Components.Forms
         private void GridViewManager_DesignerRequested(object sender, EventArgs e)
             => ToggleViewDesigner();
 
-        private void GridViewManager_ViewChanged(object sender, EventArgs e)
-        {
-            if (CurrentViewLabel == null || gridViewManager == null)
-                return;
-
-            CurrentViewLabel.Text = "Vista: " + gridViewManager.CurrentViewName;
-        }
-
         private void ConfigToolStrip_Paint(object sender, PaintEventArgs e)
         {
             // La línea superior se pinta aquí; podría moverse a GenesysControlVisual
@@ -697,40 +663,21 @@ namespace Genesys.UI.Components.Forms
 
         private void Filters_SearchCompleted(object sender, GenesysGridFilterResult e)
         {
-            pendingFilterResult = e;
-
-            if (filterResultBindScheduled)
-                return;
-
-            filterResultBindScheduled = true;
-
-            BeginInvoke(new Action(delegate
+            if (e.HasTable)
             {
-                filterResultBindScheduled = false;
+                BindGridDataTable(e.Table);
+                return;
+            }
 
-                GenesysGridFilterResult result = pendingFilterResult;
-                pendingFilterResult = null;
+            if (e.HasDataSet && e.DataSet.Tables.Count > 0)
+            {
+                BindGridDataTable(e.DataSet.Tables[0]);
+                return;
+            }
 
-                if (result == null)
-                    return;
-
-                if (result.HasTable)
-                {
-                    BindGridDataTable(result.Table);
-                    return;
-                }
-
-                if (result.HasDataSet && result.DataSet.Tables.Count > 0)
-                {
-                    BindGridDataTable(result.DataSet.Tables[0]);
-                    return;
-                }
-
-                // Resultado vacío: notificar en lugar de fallar silenciosamente
-                //Messages?.ShowInfo("La búsqueda no devolvió resultados.");
-            }));
+            // Resultado vacío: notificar en lugar de fallar silenciosamente
+            //Messages?.ShowInfo("La búsqueda no devolvió resultados.");
         }
-
 
         // ─── Ciclo de vida del formulario ─────────────────────────────────────
 
@@ -745,19 +692,30 @@ namespace Genesys.UI.Components.Forms
         private void RestoreFiltersAndSearch()
         {
             if (filtersRestored)
+            {
                 return;
+            }
 
             filtersRestored = true;
+
+            bool hasSavedGridView =
+                gridViewManager != null &&
+                !gridViewManager.IsCurrentViewDefault;
+
+            if (hasSavedGridView)
+            {
+                return;
+            }
 
             GenesysGridFilterState state =
                 filterPersistence.Load(Filters.PersistenceKey);
 
             if (state != null)
+            {
                 Filters.ApplyState(state);
+            }
 
-            // La búsqueda inicial debe ejecutarse aunque exista una vista activa;
-            // BindGridDataTable se encargará de aplicar esa vista antes de pintar.
-            Filters.RefreshSearch();
+            Filters.ExecuteSearch();
         }
 
         private string CaptureFiltersXml()
@@ -808,7 +766,7 @@ namespace Genesys.UI.Components.Forms
         private void ExecuteFiltersSearch()
         {
             if (Filters != null)
-                Filters.RefreshSearch();
+                Filters.ExecuteSearch();
         }
 
         //private string SafePreview(string text, int maxLength)
@@ -836,7 +794,6 @@ namespace Genesys.UI.Components.Forms
 
             if (gridViewManager != null)
             {
-                gridViewManager.ViewChanged -= GridViewManager_ViewChanged;
                 gridViewManager.PersistCurrentViewName();
                 gridViewManager.Dispose();
                 gridViewManager = null;
@@ -934,7 +891,6 @@ namespace Genesys.UI.Components.Forms
                     if (gridViewManager != null)
                     {
                         gridViewManager.DesignerRequested -= GridViewManager_DesignerRequested;
-                        gridViewManager.ViewChanged -= GridViewManager_ViewChanged;
                         gridViewManager.Dispose();
                         gridViewManager = null;
                     }

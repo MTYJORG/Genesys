@@ -3,6 +3,7 @@ using Syncfusion.WinForms.DataGrid.Events;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
@@ -20,7 +21,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         private readonly string gridKey;
         private readonly IGenesysGridViewStore store;
         private readonly IGenesysGridViewStateStore stateStore;
-        private readonly Dictionary<string, string> numericFormats;
         private readonly GenesysGridSummaryService summaryService;
         private readonly GenesysGridLayoutService layoutService;
         private readonly GenesysGridViewPersistenceService persistenceService;
@@ -32,6 +32,7 @@ namespace Genesys.UI.Components.Controls.GridViews
         private Action executeSearch;
         private readonly GenesysGridViewMenuService menuService;
         private readonly List<Tuple<EventInfo, Delegate>> dynamicGridEventHandlers = new List<Tuple<EventInfo, Delegate>>();
+        private readonly Dictionary<string, GenesysGridViewLayout> runtimeLayoutsByViewName = new Dictionary<string, GenesysGridViewLayout>(StringComparer.OrdinalIgnoreCase);
         private INotifyCollectionChanged sortDescriptionsNotifier;
         private bool normalizeSelectionAfterSortPending;
 
@@ -48,9 +49,8 @@ namespace Genesys.UI.Components.Controls.GridViews
             this.gridKey = gridKey;
             this.store = store;
             stateStore = store as IGenesysGridViewStateStore;
-            numericFormats = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             currentViewName = DefaultViewName;
-            summaryService = new GenesysGridSummaryService(grid, numericFormats);
+            summaryService = new GenesysGridSummaryService(grid);
             layoutService = new GenesysGridLayoutService(
                 grid,
                 summaryService,
@@ -73,7 +73,6 @@ namespace Genesys.UI.Components.Controls.GridViews
                 owner,
                 grid,
                 button,
-                numericFormats,
                 DefaultViewName,
                 persistenceService.LoadViews,
                 delegate { return currentViewName; },
@@ -119,20 +118,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             UpdateButtonState();
         }
 
-        public void SetNumericFormat(string columnName, string format)
-        {
-            if (string.IsNullOrWhiteSpace(columnName))
-                return;
-
-            numericFormats[columnName] = format;
-            GenesysGridConfigurator.ApplyNumericFormat(grid, columnName, format);
-        }
-
-        public void ApplyNumericFormats()
-        {
-            GenesysGridConfigurator.ApplyNumericFormats(grid, numericFormats);
-        }
-
         public void AttachFilters(
             Func<string> captureFilterStateXml,
             Action<string> applyFilterStateXml,
@@ -170,6 +155,132 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             return views.FirstOrDefault(x =>
                 string.Equals(x.ViewName, currentViewName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public GenesysGridViewLayout CaptureCurrentRuntimeLayout()
+        {
+            string viewName = IsDefaultView(currentViewName)
+                ? DefaultViewName
+                : currentViewName;
+
+            return CaptureLayout(viewName);
+        }
+
+        private void CaptureRuntimeLayoutForCurrentViewIfNeeded()
+        {
+            if (!hasChanges)
+                return;
+
+            string viewName = IsDefaultView(currentViewName)
+                ? DefaultViewName
+                : currentViewName;
+
+            GenesysGridViewLayout layout = CaptureLayout(viewName);
+
+            if (layout == null)
+                return;
+
+            runtimeLayoutsByViewName[viewName] = layout;
+        }
+
+        private void ApplyRuntimeLayout(GenesysGridViewLayout layout)
+        {
+            if (layout == null)
+                return;
+
+            isApplyingLayout = true;
+
+            try
+            {
+                layoutService.Apply(layout, false);
+
+                currentViewName = string.IsNullOrWhiteSpace(layout.ViewName)
+                    ? DefaultViewName
+                    : layout.ViewName;
+
+                hasChanges = true;
+                PersistCurrentViewName();
+            }
+            finally
+            {
+                isApplyingLayout = false;
+                UpdateButtonState();
+            }
+
+            QueueNormalizeSelectionAfterSort();
+        }
+
+        private void ClearRuntimeLayoutForCurrentView()
+        {
+            string viewName = IsDefaultView(currentViewName)
+                ? DefaultViewName
+                : currentViewName;
+
+            runtimeLayoutsByViewName.Remove(viewName);
+        }
+
+        public IList<string> GetAvailableViewNames()
+        {
+            var result = new List<string>();
+            result.Add(DefaultViewName);
+
+            IList<GenesysGridViewLayout> views = persistenceService.LoadViews();
+
+            if (views == null)
+                return result;
+
+            foreach (var view in views.OrderBy(x => x.ViewName))
+            {
+                if (view == null || string.IsNullOrWhiteSpace(view.ViewName))
+                    continue;
+
+                if (IsDefaultView(view.ViewName))
+                    continue;
+
+                if (result.Any(x => string.Equals(x, view.ViewName, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                result.Add(view.ViewName);
+            }
+
+            return result;
+        }
+
+        public void ApplyViewByName(string viewName)
+        {
+            if (string.IsNullOrWhiteSpace(viewName))
+                return;
+
+            if (string.Equals(viewName, currentViewName, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            CaptureRuntimeLayoutForCurrentViewIfNeeded();
+
+            GenesysGridViewLayout runtimeLayout;
+            if (runtimeLayoutsByViewName.TryGetValue(viewName, out runtimeLayout) && runtimeLayout != null)
+            {
+                ApplyRuntimeLayout(runtimeLayout);
+                return;
+            }
+
+            if (IsDefaultView(viewName))
+            {
+                ApplyDefaultViewAndRefresh();
+                return;
+            }
+
+            IList<GenesysGridViewLayout> views = persistenceService.LoadViews();
+
+            if (views == null)
+                return;
+
+            GenesysGridViewLayout layout = views.FirstOrDefault(x =>
+                string.Equals(x.ViewName, viewName, StringComparison.OrdinalIgnoreCase));
+
+            if (layout == null)
+                return;
+
+            ApplyLayout(layout);
         }
 
         public void ApplyCurrentViewLayoutBeforePaint()
@@ -220,12 +331,27 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         private bool SaveCurrentView(string viewName)
         {
-            return persistenceService.SaveCurrentView(viewName);
+            bool saved = persistenceService.SaveCurrentView(viewName);
+
+            if (saved)
+                ClearRuntimeLayoutForCurrentView();
+
+            return saved;
         }
 
         private bool SaveAsNewView()
         {
-            return persistenceService.SaveAsNewView();
+            bool saved = persistenceService.SaveAsNewView();
+
+            if (saved)
+                ClearRuntimeLayoutForCurrentView();
+
+            return saved;
+        }
+
+        public bool SaveAsNewViewFromDesigner()
+        {
+            return SaveAsNewView();
         }
 
         private void DuplicateView()
@@ -249,7 +375,12 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             try
             {
-                layoutService.ApplyDefaultLayout(null);
+                DataTable table = GetCurrentDataTable();
+
+                if (table != null)
+                    GenesysGridConfigurator.BindDataTable(grid, table, null);
+                else
+                    layoutService.ApplyDefaultLayout(null);
 
                 currentViewName = DefaultViewName;
                 hasChanges = false;
@@ -258,7 +389,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             finally
             {
                 isApplyingLayout = false;
-                ApplyNumericFormats();
                 UpdateButtonState();
             }
         }
@@ -320,6 +450,11 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             if (executeSearch != null)
                 executeSearch();
+
+            // executeSearch puede provocar un bind asíncrono en el formulario.
+            // La selección/carga de Predeterminada no debe dejar la vista marcada como modificada.
+            hasChanges = false;
+            UpdateButtonState();
         }
 
         private GenesysGridViewLayout CaptureLayout(string viewName)
@@ -336,6 +471,11 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             try
             {
+                DataTable table = GetCurrentDataTable();
+
+                if (table != null)
+                    GenesysGridConfigurator.BindDataTable(grid, table, layout);
+
                 layoutService.Apply(layout, false);
 
                 currentViewName = layout.ViewName;
@@ -345,9 +485,35 @@ namespace Genesys.UI.Components.Controls.GridViews
             finally
             {
                 isApplyingLayout = false;
-                ApplyNumericFormats();
                 UpdateButtonState();
             }
+
+            QueueNormalizeSelectionAfterSort();
+        }
+
+        private DataTable GetCurrentDataTable()
+        {
+            if (grid == null)
+                return null;
+
+            object source = grid.DataSource;
+
+            if (source is DataTable table)
+                return table;
+
+            if (source is DataView view)
+                return view.Table;
+
+            if (source is BindingSource bindingSource)
+            {
+                if (bindingSource.DataSource is DataTable bsTable)
+                    return bsTable;
+
+                if (bindingSource.DataSource is DataView bsView)
+                    return bsView.Table;
+            }
+
+            return null;
         }
 
         
@@ -433,6 +599,34 @@ namespace Genesys.UI.Components.Controls.GridViews
             return null;
         }
 
+        public void ReorderColumnsByMappingNames(IList<string> columnNames)
+        {
+            if (grid == null || grid.Columns == null || columnNames == null)
+                return;
+
+            int targetIndex = 0;
+
+            foreach (string columnName in columnNames)
+            {
+                if (string.IsNullOrWhiteSpace(columnName))
+                    continue;
+
+                GridColumn column = FindColumn(columnName);
+
+                if (column == null)
+                    continue;
+
+                int currentIndex = grid.Columns.IndexOf(column);
+
+                if (currentIndex >= 0 && currentIndex != targetIndex)
+                    grid.Columns.Move(currentIndex, targetIndex);
+
+                targetIndex++;
+            }
+
+            MarkChanged();
+        }
+
         private bool IsDefaultView(string viewName)
         {
             return string.IsNullOrWhiteSpace(viewName) ||
@@ -491,17 +685,32 @@ namespace Genesys.UI.Components.Controls.GridViews
 
         public bool SaveCurrentOrAsk()
         {
-            return persistenceService.SaveCurrentOrAsk();
+            bool saved = persistenceService.SaveCurrentOrAsk();
+
+            if (saved)
+                ClearRuntimeLayoutForCurrentView();
+
+            return saved;
         }
 
         public bool ConfirmPendingChangesBeforeClose(IWin32Window dialogOwner)
         {
-            if (!hasChanges)
+            CaptureRuntimeLayoutForCurrentViewIfNeeded();
+
+            if (runtimeLayoutsByViewName.Count == 0)
                 return true;
+
+            string changedViews = BuildChangedViewsText();
+
+            string message =
+                "Hay cambios temporales sin guardar en las siguientes vistas:" +
+                "\n\n" +
+                changedViews +
+                "\n\n¿Deseas guardar todos los cambios antes de cerrar?";
 
             DialogResult result = MessageBox.Show(
                 dialogOwner,
-                "Hay cambios sin guardar en la vista actual.\n\n¿Deseas guardar los cambios antes de cerrar?",
+                message,
                 "Vistas del grid",
                 MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question);
@@ -512,11 +721,78 @@ namespace Genesys.UI.Components.Controls.GridViews
             if (result == DialogResult.No)
             {
                 hasChanges = false;
+                runtimeLayoutsByViewName.Clear();
                 UpdateButtonState();
                 return true;
             }
 
-            return SaveCurrentOrAsk();
+            return SaveAllRuntimeLayouts(dialogOwner);
+        }
+
+        private string BuildChangedViewsText()
+        {
+            if (runtimeLayoutsByViewName.Count == 0)
+                return "- " + currentViewName;
+
+            return string.Join(
+                Environment.NewLine,
+                runtimeLayoutsByViewName.Keys
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .OrderBy(x => x)
+                    .Select(x => "- " + x)
+                    .ToArray());
+        }
+
+        private bool SaveAllRuntimeLayouts(IWin32Window dialogOwner)
+        {
+            CaptureRuntimeLayoutForCurrentViewIfNeeded();
+
+            if (runtimeLayoutsByViewName.Count == 0)
+                return true;
+
+            try
+            {
+                foreach (KeyValuePair<string, GenesysGridViewLayout> item in runtimeLayoutsByViewName.ToArray())
+                {
+                    GenesysGridViewLayout layout = item.Value;
+
+                    if (layout == null)
+                        continue;
+
+                    if (string.IsNullOrWhiteSpace(layout.GridKey))
+                        layout.GridKey = gridKey;
+
+                    if (string.IsNullOrWhiteSpace(layout.ViewName))
+                        layout.ViewName = item.Key;
+
+                    if (IsDefaultView(layout.ViewName))
+                        continue;
+
+                    layout.ModifiedAt = DateTime.Now;
+
+                    if (layout.CreatedAt == DateTime.MinValue)
+                        layout.CreatedAt = DateTime.Now;
+
+                    store.Save(layout);
+                }
+
+                runtimeLayoutsByViewName.Clear();
+                hasChanges = false;
+                PersistCurrentViewName();
+                UpdateButtonState();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    dialogOwner,
+                    "No se pudieron guardar todos los cambios de vistas.\n\n" + ex.Message,
+                    "Vistas del grid",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                return false;
+            }
         }
 
         public IList<GenesysGridColumnProfile> GetColumnProfiles()
@@ -588,9 +864,6 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             SetColumnGrouped(profile.ColumnName, profile.Grouped);
             SetFrozenThroughColumn(profile.ColumnName, profile.Frozen);
-
-            if (!string.IsNullOrWhiteSpace(profile.Format))
-                numericFormats[profile.ColumnName] = profile.Format;
 
             MarkChanged();
         }
@@ -771,13 +1044,13 @@ namespace Genesys.UI.Components.Controls.GridViews
             grid.ColumnResizing -= Grid_ColumnResizing;
             grid.ColumnResizing += Grid_ColumnResizing;
 
-            HookDynamicGridEvent("FilterChanged");
-            HookDynamicGridEvent("FilterChanging");
-            HookDynamicGridEvent("SortColumnsChanged");
-            HookDynamicGridEvent("SortColumnsChanging");
-            HookDynamicGridEvent("SortChanged");
+            HookGridRuntimeStateChanged();
+        }
 
+        private void HookGridRuntimeStateChanged()
+        {
             HookSortDescriptionsChanged();
+            HookFilterChanged();
         }
 
 
@@ -800,6 +1073,23 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return;
 
             QueueNormalizeSelectionAfterSort();
+            MarkChanged();
+        }
+
+        private void HookFilterChanged()
+        {
+            if (grid == null)
+                return;
+
+            grid.FilterChanged -= Grid_FilterChanged;
+            grid.FilterChanged += Grid_FilterChanged;
+        }
+
+        private void Grid_FilterChanged(object sender, FilterChangedEventArgs e)
+        {
+            if (isApplyingLayout)
+                return;
+
             MarkChanged();
         }
 
@@ -867,6 +1157,9 @@ namespace Genesys.UI.Components.Controls.GridViews
                 sortDescriptionsNotifier = null;
             }
 
+            if (grid != null)
+                grid.FilterChanged -= Grid_FilterChanged;
+
             foreach (var item in dynamicGridEventHandlers.ToArray())
             {
                 try
@@ -879,6 +1172,7 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
 
             dynamicGridEventHandlers.Clear();
+            runtimeLayoutsByViewName.Clear();
 
             if (menuService != null)
                 menuService.Dispose();
@@ -897,6 +1191,90 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             if (ViewChanged != null)
                 ViewChanged(this, EventArgs.Empty);
+        }
+        public Type GetColumnDataType(string columnName)
+        {
+            if (grid == null || string.IsNullOrWhiteSpace(columnName))
+                return null;
+
+            Type type = GetColumnTypeFromDataSource(columnName);
+
+            if (type != null)
+                return type;
+
+            GridColumn column = FindColumn(columnName);
+
+            if (column != null)
+            {
+                object valueType = GetPropertyValue(column, "ValueType");
+
+                if (valueType is Type)
+                    return Nullable.GetUnderlyingType((Type)valueType) ?? (Type)valueType;
+            }
+
+            return null;
+        }
+
+        private Type GetColumnTypeFromDataSource(string columnName)
+        {
+            object source = grid.DataSource;
+
+            if (source is DataTable table)
+                return GetDataTableColumnType(table, columnName);
+
+            if (source is DataView view)
+                return GetDataTableColumnType(view.Table, columnName);
+
+            if (source is BindingSource bindingSource)
+            {
+                if (bindingSource.DataSource is DataTable bsTable)
+                    return GetDataTableColumnType(bsTable, columnName);
+
+                if (bindingSource.DataSource is DataView bsView)
+                    return GetDataTableColumnType(bsView.Table, columnName);
+            }
+
+            return null;
+        }
+
+        private Type GetDataTableColumnType(DataTable table, string columnName)
+        {
+            if (table == null || !table.Columns.Contains(columnName))
+                return null;
+
+            Type type = table.Columns[columnName].DataType;
+
+            return Nullable.GetUnderlyingType(type) ?? type;
+        }
+
+        public bool IsNumericColumn(string columnName)
+        {
+            Type type = GetColumnDataType(columnName);
+
+            if (type == null)
+                return false;
+
+            type = Nullable.GetUnderlyingType(type) ?? type;
+
+            return type == typeof(byte) ||
+                   type == typeof(short) ||
+                   type == typeof(int) ||
+                   type == typeof(long) ||
+                   type == typeof(float) ||
+                   type == typeof(double) ||
+                   type == typeof(decimal);
+        }
+
+        public bool IsDateColumn(string columnName)
+        {
+            Type type = GetColumnDataType(columnName);
+            return type == typeof(DateTime);
+        }
+
+        public bool IsBooleanColumn(string columnName)
+        {
+            Type type = GetColumnDataType(columnName);
+            return type == typeof(bool);
         }
     }
 }

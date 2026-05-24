@@ -11,14 +11,10 @@ namespace Genesys.UI.Components.Controls.GridViews
     public class GenesysGridSummaryService
     {
         private readonly SfDataGrid grid;
-        private readonly IDictionary<string, string> numericFormats;
 
-        public GenesysGridSummaryService(
-            SfDataGrid grid,
-            IDictionary<string, string> numericFormats)
+        public GenesysGridSummaryService(SfDataGrid grid)
         {
             this.grid = grid;
-            this.numericFormats = numericFormats;
         }
 
         public void Capture(GenesysGridViewLayout layout)

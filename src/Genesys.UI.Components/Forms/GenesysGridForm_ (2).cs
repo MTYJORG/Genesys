@@ -8,6 +8,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.IO;
@@ -32,6 +33,7 @@ namespace Genesys.UI.Components.Forms
 
         // ─── Campos ───────────────────────────────────────────────────────────
         private readonly GenesysGridFilterPersistence filterPersistence;
+        private readonly Dictionary<string, string> gridNumericFormats;
         private GenesysGridViewManager gridViewManager;
         private bool filtersRestored;
         private ToolStripEx configToolStrip;
@@ -70,6 +72,7 @@ namespace Genesys.UI.Components.Forms
         public GenesysGridForm()
         {
             filterPersistence = new GenesysGridFilterPersistence();
+            gridNumericFormats = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             Initialize();
         }
 
@@ -419,6 +422,30 @@ namespace Genesys.UI.Components.Forms
             Grid.CellRenderers.Add("TableSummary", new AlignedSummaryRenderer());
         }
 
+        // ─── Formatos numéricos ───────────────────────────────────────────────
+
+        protected void SetGridNumericFormat(string columnName, string format)
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+                return;
+
+            gridNumericFormats[columnName] = format;
+
+            gridViewManager?.SetNumericFormat(columnName, format);
+        }
+
+        protected void SetGridNumericFormats(IDictionary<string, string> formats)
+        {
+            if (formats == null)
+                return;
+
+            foreach (var item in formats)
+                SetGridNumericFormat(item.Key, item.Value);
+        }
+
+        protected virtual IDictionary<string, string> GetGridNumericFormats()
+            => gridNumericFormats;
+
         // ─── Binding ──────────────────────────────────────────────────────────
 
         protected void BindGridDataTable(DataTable table)
@@ -434,6 +461,7 @@ namespace Genesys.UI.Components.Forms
             GenesysGridConfigurator.BindDataTable(
                 Grid,
                 table,
+                GetGridNumericFormats(),
                 activeLayout);
 
             if (gridViewManager != null && activeLayout != null)
@@ -441,12 +469,6 @@ namespace Genesys.UI.Components.Forms
 
             ViewDesigner?.ReloadColumns();
             GridNavigator?.NotifyDataBound();
-
-            // Al cargar o refrescar la vista Predeterminada, Syncfusion puede disparar
-            // eventos internos de columnas/sort/bind que el manager interpreta como cambios.
-            // La carga de datos NO debe marcar la vista como modificada.
-            if (gridViewManager != null && gridViewManager.IsCurrentViewDefault)
-                gridViewManager.MarkClean();
         }
 
 

@@ -12,7 +12,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         private readonly Form owner;
         private readonly SfDataGrid grid;
         private readonly ToolStripButton button;
-        private readonly IDictionary<string, string> numericFormats;
         private readonly string defaultViewName;
         private readonly Func<IList<GenesysGridViewLayout>> loadViews;
         private readonly Func<string> getCurrentViewName;
@@ -34,7 +33,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             Form owner,
             SfDataGrid grid,
             ToolStripButton button,
-            IDictionary<string, string> numericFormats,
             string defaultViewName,
             Func<IList<GenesysGridViewLayout>> loadViews,
             Func<string> getCurrentViewName,
@@ -54,7 +52,6 @@ namespace Genesys.UI.Components.Controls.GridViews
             this.owner = owner;
             this.grid = grid;
             this.button = button;
-            this.numericFormats = numericFormats;
             this.defaultViewName = defaultViewName;
             this.loadViews = loadViews;
             this.getCurrentViewName = getCurrentViewName;
@@ -229,24 +226,29 @@ namespace Genesys.UI.Components.Controls.GridViews
                     return;
                 }
 
-                string format = null;
+                string format = GetSummaryFormatFromColumn(column, summaryType);
 
-                if (numericFormats != null)
-                    numericFormats.TryGetValue(column.MappingName, out format);
-
-                if (string.Equals(summaryType, "Count", StringComparison.OrdinalIgnoreCase))
-                    format = "N0";
-
-                if (addOrReplaceSummary != null) addOrReplaceSummary(column.MappingName, summaryType, string.IsNullOrWhiteSpace(format) ? "N2" : format);
+                if (addOrReplaceSummary != null) addOrReplaceSummary(column.MappingName, summaryType, format);
                 if (markChanged != null) markChanged();
             };
 
             return item;
         }
 
+        private string GetSummaryFormatFromColumn(GridColumn column, string summaryType)
+        {
+            if (string.Equals(summaryType, "Count", StringComparison.OrdinalIgnoreCase))
+                return "N0";
+
+            if (column != null && !string.IsNullOrWhiteSpace(column.Format))
+                return column.Format;
+
+            return "N2";
+        }
+
         private void ShowSummaryEditor()
         {
-            using (var dialog = new GenesysGridSummaryPrompt(grid, numericFormats))
+            using (var dialog = new GenesysGridSummaryPrompt(grid))
             {
                 if (dialog.ShowDialog(owner) != DialogResult.OK)
                     return;

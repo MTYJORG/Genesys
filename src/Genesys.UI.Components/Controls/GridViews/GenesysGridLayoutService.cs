@@ -14,6 +14,7 @@ namespace Genesys.UI.Components.Controls.GridViews
     {
         private readonly SfDataGrid grid;
         private readonly GenesysGridSummaryService summaryService;
+        private readonly Dictionary<GenesysGridViewLayout, List<RuntimeColumnFilterSnapshot>> runtimeFilterSnapshots;
 
         public GenesysGridLayoutService(
             SfDataGrid grid,
@@ -23,7 +24,12 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             this.grid = grid;
             this.summaryService = summaryService;
+            runtimeFilterSnapshots = new Dictionary<GenesysGridViewLayout, List<RuntimeColumnFilterSnapshot>>();
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // API pública
+        // ─────────────────────────────────────────────────────────────
 
         public GenesysGridViewLayout Capture(
             string viewName,
@@ -42,6 +48,10 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             foreach (GridColumn column in grid.Columns)
             {
+                System.Diagnostics.Debug.WriteLine(       "CAPTURE VIEW [" + viewName + "] " +        column.MappingName +
+                                                        " | Type=" + column.GetType().FullName +
+                                                         " | Format=[" + column.Format + "]");
+
                 layout.Columns.Add(new GenesysGridColumnLayout
                 {
                     MappingName = column.MappingName,
@@ -58,6 +68,7 @@ namespace Genesys.UI.Components.Controls.GridViews
             CaptureGroups(layout);
             summaryService.Capture(layout);
             CaptureSorts(layout);
+            CaptureRuntimeFilters(layout);
 
             if (captureFilters != null)
                 captureFilters(layout);
@@ -76,12 +87,11 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return;
 
             // Native layout de Syncfusion queda retirado. La vista se aplica manualmente.
-            ClearGroupDescriptions();
-            ClearSortDescriptions();
-            summaryService.ClearSummaryRows();
+            ResetLayoutState();
 
             ApplyColumns(layout);
             ReorderColumns(layout);
+            ApplyRuntimeFilters(layout);
             ApplyGroups(layout);
             summaryService.Apply(layout);
             ApplySorts(layout);
@@ -90,9 +100,7 @@ namespace Genesys.UI.Components.Controls.GridViews
         public void ApplyDefaultLayout(string ignoredNativeLayoutXml)
         {
             ClearNativeGridRuntimeState();
-            ClearGroupDescriptions();
-            ClearSortDescriptions();
-            summaryService.ClearSummaryRows();
+            ResetLayoutState();
 
             foreach (GridColumn column in grid.Columns)
                 column.Visible = true;
@@ -100,6 +108,22 @@ namespace Genesys.UI.Components.Controls.GridViews
             grid.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // Reset centralizado del estado visual/runtime del grid
+        // Mantener juntos: groups, sorts, filtros internos y summaries.
+        // ─────────────────────────────────────────────────────────────
+
+        private void ResetLayoutState()
+        {
+            ClearGroupDescriptions();
+            ClearSortDescriptions();
+            ClearFilterDescriptions();
+            summaryService.ClearSummaryRows();
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Columnas: ancho, visible, formato y orden visual
+        // ─────────────────────────────────────────────────────────────
 
         private void ApplyColumns(GenesysGridViewLayout layout)
         {
@@ -120,8 +144,10 @@ namespace Genesys.UI.Components.Controls.GridViews
                 if (savedColumn.Width > 0)
                     column.Width = savedColumn.Width;
 
-                if (!string.IsNullOrWhiteSpace(savedColumn.Format))
-                    column.Format = savedColumn.Format;
+                // Siempre asignar formato, incluso vacío.
+                // Si no se limpia aquí, el formato runtime de una vista anterior
+                // puede quedarse vivo al aplicar otra vista.
+                column.Format = savedColumn.Format ?? string.Empty;
             }
         }
 
@@ -149,6 +175,10 @@ namespace Genesys.UI.Components.Controls.GridViews
                 targetIndex++;
             }
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // Sort interno del SfDataGrid
+        // ─────────────────────────────────────────────────────────────
 
         private void CaptureSorts(GenesysGridViewLayout layout)
         {
@@ -199,6 +229,10 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // Groups internos del SfDataGrid
+        // ─────────────────────────────────────────────────────────────
+
         private void CaptureGroups(GenesysGridViewLayout layout)
         {
             if (grid.GroupColumnDescriptions == null)
@@ -236,6 +270,153 @@ namespace Genesys.UI.Components.Controls.GridViews
 
             SafeGridMutation(apply);
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // Filtros internos del SfDataGrid
+        // Se capturan/aplican como estado runtime temporal asociado al layout.
+        // ─────────────────────────────────────────────────────────────
+
+        private void CaptureRuntimeFilters(GenesysGridViewLayout layout)
+        {
+            if (layout == null || grid == null || grid.Columns == null)
+                return;
+
+            var snapshots = new List<RuntimeColumnFilterSnapshot>();
+
+            foreach (GridColumn column in grid.Columns)
+            {
+                if (column == null || string.IsNullOrWhiteSpace(column.MappingName))
+                    continue;
+
+                object predicates = GetPropertyValue(column, "FilterPredicates");
+                if (predicates == null)
+                    continue;
+
+                var values = new List<object>();
+
+                foreach (object predicate in EnumerateCollection(predicates))
+                {
+                    if (predicate != null)
+                        values.Add(ClonePredicate(predicate));
+                }
+
+                if (values.Count > 0)
+                {
+                    snapshots.Add(new RuntimeColumnFilterSnapshot
+                    {
+                        ColumnName = column.MappingName,
+                        Predicates = values
+                    });
+                }
+            }
+
+            if (snapshots.Count > 0)
+                runtimeFilterSnapshots[layout] = snapshots;
+        }
+
+        private void ApplyRuntimeFilters(GenesysGridViewLayout layout)
+        {
+            if (layout == null)
+                return;
+
+            List<RuntimeColumnFilterSnapshot> snapshots;
+            if (!runtimeFilterSnapshots.TryGetValue(layout, out snapshots))
+                return;
+
+            if (snapshots == null || snapshots.Count == 0)
+                return;
+
+            foreach (RuntimeColumnFilterSnapshot snapshot in snapshots)
+            {
+                if (snapshot == null || string.IsNullOrWhiteSpace(snapshot.ColumnName))
+                    continue;
+
+                GridColumn column = FindColumn(snapshot.ColumnName);
+                if (column == null)
+                    continue;
+
+                object predicates = GetPropertyValue(column, "FilterPredicates");
+                if (predicates == null)
+                    continue;
+
+                InvokeClear(predicates);
+
+                foreach (object predicate in snapshot.Predicates)
+                {
+                    if (predicate == null)
+                        continue;
+
+                    InvokeAdd(predicates, ClonePredicate(predicate));
+                }
+            }
+
+            RefreshFilterView();
+        }
+
+        private void ClearFilterDescriptions()
+        {
+            try
+            {
+                if (grid == null)
+                    return;
+
+                MethodInfo clearFilters = grid.GetType().GetMethod(
+                    "ClearFilters",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    Type.EmptyTypes,
+                    null);
+
+                if (clearFilters != null)
+                {
+                    clearFilters.Invoke(grid, null);
+                    return;
+                }
+
+                MethodInfo clearFilter = grid.GetType().GetMethod(
+                    "ClearFilter",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    Type.EmptyTypes,
+                    null);
+
+                if (clearFilter != null)
+                    clearFilter.Invoke(grid, null);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (grid == null || grid.Columns == null)
+                    return;
+
+                foreach (GridColumn column in grid.Columns)
+                {
+                    object predicates = GetPropertyValue(column, "FilterPredicates");
+                    InvokeClear(predicates);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (grid != null && grid.View != null)
+                    ClearCollectionProperty(grid.View, "FilterPredicates");
+            }
+            catch
+            {
+            }
+
+            RefreshFilterView();
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Limpieza de estado visual/runtime del grid
+        // ─────────────────────────────────────────────────────────────
 
         private void ClearGroupDescriptions()
         {
@@ -282,6 +463,10 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // Helpers reflection para APIs variables de Syncfusion
+        // ─────────────────────────────────────────────────────────────
+
         private void InvokeGridMethodIfExists(string methodName)
         {
             try
@@ -323,22 +508,16 @@ namespace Genesys.UI.Components.Controls.GridViews
                 if (value == null)
                     return;
 
-                MethodInfo clear = value.GetType().GetMethod(
-                    "Clear",
-                    BindingFlags.Instance | BindingFlags.Public,
-                    null,
-                    Type.EmptyTypes,
-                    null);
-
-                if (clear == null)
-                    return;
-
-                clear.Invoke(value, null);
+                InvokeClear(value);
             }
             catch
             {
             }
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // Helpers generales del grid
+        // ─────────────────────────────────────────────────────────────
 
         private GridColumn FindColumn(string mappingName)
         {
@@ -413,6 +592,33 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
         }
 
+        private void RefreshFilterView()
+        {
+            try
+            {
+                if (grid == null || grid.View == null)
+                    return;
+
+                MethodInfo refreshFilter = grid.View.GetType().GetMethod(
+                    "RefreshFilter",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    Type.EmptyTypes,
+                    null);
+
+                if (refreshFilter != null)
+                {
+                    refreshFilter.Invoke(grid.View, null);
+                    return;
+                }
+
+                grid.View.Refresh();
+            }
+            catch
+            {
+            }
+        }
+
         private object GetPropertyValue(object instance, string propertyName)
         {
             if (instance == null || string.IsNullOrWhiteSpace(propertyName))
@@ -429,6 +635,113 @@ namespace Genesys.UI.Components.Controls.GridViews
         {
             object value = GetPropertyValue(instance, propertyName);
             return value == null ? null : Convert.ToString(value);
+        }
+
+        private IEnumerable<object> EnumerateCollection(object collection)
+        {
+            if (collection == null)
+                yield break;
+
+            System.Collections.IEnumerable enumerable =
+                collection as System.Collections.IEnumerable;
+
+            if (enumerable == null)
+                yield break;
+
+            foreach (object item in enumerable)
+                yield return item;
+        }
+
+        private void InvokeClear(object collection)
+        {
+            try
+            {
+                if (collection == null)
+                    return;
+
+                MethodInfo clear = collection.GetType().GetMethod(
+                    "Clear",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    Type.EmptyTypes,
+                    null);
+
+                if (clear != null)
+                    clear.Invoke(collection, null);
+            }
+            catch
+            {
+            }
+        }
+
+        private void InvokeAdd(object collection, object value)
+        {
+            try
+            {
+                if (collection == null || value == null)
+                    return;
+
+                MethodInfo add = null;
+
+                foreach (MethodInfo method in collection.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
+                {
+                    if (!string.Equals(method.Name, "Add", StringComparison.Ordinal))
+                        continue;
+
+                    ParameterInfo[] parameters = method.GetParameters();
+                    if (parameters.Length != 1)
+                        continue;
+
+                    if (!parameters[0].ParameterType.IsAssignableFrom(value.GetType()))
+                        continue;
+
+                    add = method;
+                    break;
+                }
+
+                if (add != null)
+                    add.Invoke(collection, new object[] { value });
+            }
+            catch
+            {
+            }
+        }
+
+        private object ClonePredicate(object predicate)
+        {
+            if (predicate == null)
+                return null;
+
+            try
+            {
+                Type type = predicate.GetType();
+                object clone = Activator.CreateInstance(type);
+
+                foreach (PropertyInfo property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+                {
+                    if (!property.CanRead || !property.CanWrite)
+                        continue;
+
+                    object value = property.GetValue(predicate, null);
+                    property.SetValue(clone, value, null);
+                }
+
+                return clone;
+            }
+            catch
+            {
+                return predicate;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // DTO interno para filtros runtime
+        // ─────────────────────────────────────────────────────────────
+
+        private sealed class RuntimeColumnFilterSnapshot
+        {
+            public string ColumnName { get; set; }
+            public List<object> Predicates { get; set; }
         }
     }
 }

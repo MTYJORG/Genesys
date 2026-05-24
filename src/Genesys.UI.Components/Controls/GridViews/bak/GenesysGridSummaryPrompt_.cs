@@ -1,5 +1,6 @@
 using Syncfusion.WinForms.DataGrid;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -17,7 +18,7 @@ namespace Genesys.UI.Components.Controls.GridViews
         public string SummaryTypeName { get; private set; }
         public string NumericFormat { get; private set; }
 
-        public GenesysGridSummaryPrompt(SfDataGrid grid)
+        public GenesysGridSummaryPrompt(SfDataGrid grid, IDictionary<string, string> numericFormats)
         {
             Text = "Summary row";
             StartPosition = FormStartPosition.CenterParent;
@@ -110,13 +111,11 @@ namespace Genesys.UI.Components.Controls.GridViews
             AcceptButton = btnOk;
             CancelButton = btnCancel;
 
-            LoadColumns(grid);
+            LoadColumns(grid, numericFormats);
             LoadSummaryTypes();
             LoadFormats();
-            ApplyDefaultFormatFromSelectedColumn();
 
-            cboColumn.SelectedIndexChanged += delegate { ApplyDefaultFormatFromSelectedColumn(); };
-            cboSummaryType.SelectedIndexChanged += delegate { ApplyDefaultFormatFromSelectedColumn(); };
+            cboColumn.SelectedIndexChanged += delegate { ApplyDefaultFormat(numericFormats); };
 
             btnOk.Click += delegate
             {
@@ -132,14 +131,14 @@ namespace Genesys.UI.Components.Controls.GridViews
                 var selectedSummaryType = cboSummaryType.SelectedItem as SummaryTypeItem;
                 SummaryTypeName = selectedSummaryType == null ? "Sum" : selectedSummaryType.Value;
 
-                if (string.Equals(SummaryTypeName, "Count", StringComparison.OrdinalIgnoreCase))
-                    NumericFormat = string.IsNullOrWhiteSpace(cboFormat.Text) ? "N0" : cboFormat.Text.Trim();
+                if (string.Equals(SummaryTypeName, "Count", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(cboFormat.Text))
+                    NumericFormat = "N0";
                 else
                     NumericFormat = string.IsNullOrWhiteSpace(cboFormat.Text) ? "N2" : cboFormat.Text.Trim();
             };
         }
 
-        private void LoadColumns(SfDataGrid grid)
+        private void LoadColumns(SfDataGrid grid, IDictionary<string, string> numericFormats)
         {
             cboColumn.Items.Clear();
 
@@ -151,11 +150,12 @@ namespace Genesys.UI.Components.Controls.GridViews
                 if (string.IsNullOrWhiteSpace(column.MappingName))
                     continue;
 
+                // Se incluyen todas las columnas para permitir Count.
+                // Sum/Average/Min/Max funcionan correctamente cuando la columna es numérica.
                 cboColumn.Items.Add(new ColumnItem
                 {
                     MappingName = column.MappingName,
-                    HeaderText = string.IsNullOrWhiteSpace(column.HeaderText) ? column.MappingName : column.HeaderText,
-                    Format = column.Format ?? string.Empty
+                    HeaderText = string.IsNullOrWhiteSpace(column.HeaderText) ? column.MappingName : column.HeaderText
                 });
             }
 
@@ -181,31 +181,25 @@ namespace Genesys.UI.Components.Controls.GridViews
             cboFormat.Items.Add("N2");
             cboFormat.Items.Add("N3");
             cboFormat.Items.Add("C2");
+            cboFormat.Text = "N2";
         }
 
-        private void ApplyDefaultFormatFromSelectedColumn()
+        private void ApplyDefaultFormat(IDictionary<string, string> numericFormats)
         {
-            var selectedColumn = cboColumn.SelectedItem as ColumnItem;
-            var selectedSummaryType = cboSummaryType.SelectedItem as SummaryTypeItem;
-            string summaryType = selectedSummaryType == null ? "Sum" : selectedSummaryType.Value;
-
-            if (string.Equals(summaryType, "Count", StringComparison.OrdinalIgnoreCase))
-            {
-                cboFormat.Text = "N0";
+            if (numericFormats == null || cboColumn.SelectedItem == null)
                 return;
-            }
 
-            if (selectedColumn != null && !string.IsNullOrWhiteSpace(selectedColumn.Format))
-                cboFormat.Text = selectedColumn.Format;
-            else
-                cboFormat.Text = "N2";
+            string mappingName = ((ColumnItem)cboColumn.SelectedItem).MappingName;
+            string format;
+
+            if (numericFormats.TryGetValue(mappingName, out format) && !string.IsNullOrWhiteSpace(format))
+                cboFormat.Text = format;
         }
 
         private class ColumnItem
         {
             public string MappingName { get; set; }
             public string HeaderText { get; set; }
-            public string Format { get; set; }
 
             public override string ToString()
             {

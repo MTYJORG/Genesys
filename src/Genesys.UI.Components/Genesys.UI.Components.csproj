@@ -144,6 +144,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Controls\GridViews\GenesysGridSummaryService.cs" />
+    <Compile Include="Controls\GridViews\GenesysGridViewDesignerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Controls\GridViews\GenesysGridViewDesignerPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -153,6 +156,9 @@
     <Compile Include="Controls\GridViews\GenesysGridViewModels.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewPersistenceService.cs" />
     <Compile Include="Controls\GridViews\GenesysGridViewPrompt.cs" />
+    <Compile Include="Controls\GridViews\GenesysGridViewSelectorBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Controls\GridViews\GenesysNavigatorButton.cs">
       <SubType>Component</SubType>
     </Compile>

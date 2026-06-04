@@ -151,6 +151,31 @@ namespace Genesys.UI.Components.Controls.Toolbar
                 btn.Visible = visible;
         }
 
+        public void SetText(string id, string text)
+        {
+            ToolStripButton btn;
+
+            if (botones.TryGetValue(id, out btn))
+            {
+                btn.Text = text;
+
+                UpdateButtonsWidth();
+            }
+        }
+        public void SetTooltip(string id, string tooltip)
+        {
+            ToolStripButton btn;
+
+            if (botones.TryGetValue(id, out btn))
+                btn.ToolTipText = tooltip;
+        }
+        public void SetEnabled(string id, bool enabled)
+        {
+            ToolStripButton btn;
+
+            if (botones.TryGetValue(id, out btn))
+                btn.Enabled = enabled;
+        }
         public void Clear()
         {
             toolStrip.Items.Clear();

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.37203.1
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11801.241 oobstable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Genesys.Framework", "Genesys.Framework.csproj", "{F8813D60-922E-4CF6-B9A8-F02FBF8DDBAB}"
 EndProject
@@ -9,9 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Genesys.UI.Controls", "..\G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Genesys.UI.Components", "..\GeneSys.UI.Components\Genesys.UI.Components.csproj", "{945370AD-966A-4C63-879C-7B7A70106CFC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Genesys.UI.Forms", "..\Genesys.UI.Forms\Genesys.UI.Forms.csproj", "{0AE5CD64-79BC-4EDA-9AD0-70787685F897}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Genesys.Data", "..\Genesys.Data\Genesys.Data.csproj", "{86F86BA4-0EEA-4AED-9C24-B88E94FA6C3A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementos de la solución", "Elementos de la solución", "{D107F4C8-89CC-BEA8-D3D7-CA6B7733353D}"
+	ProjectSection(SolutionItems) = preProject
+		..\Directory.Packages.props = ..\Directory.Packages.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,10 +34,6 @@ Global
 		{945370AD-966A-4C63-879C-7B7A70106CFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{945370AD-966A-4C63-879C-7B7A70106CFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{945370AD-966A-4C63-879C-7B7A70106CFC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0AE5CD64-79BC-4EDA-9AD0-70787685F897}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0AE5CD64-79BC-4EDA-9AD0-70787685F897}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0AE5CD64-79BC-4EDA-9AD0-70787685F897}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0AE5CD64-79BC-4EDA-9AD0-70787685F897}.Release|Any CPU.Build.0 = Release|Any CPU
 		{86F86BA4-0EEA-4AED-9C24-B88E94FA6C3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{86F86BA4-0EEA-4AED-9C24-B88E94FA6C3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{86F86BA4-0EEA-4AED-9C24-B88E94FA6C3A}.Release|Any CPU.ActiveCfg = Release|Any CPU

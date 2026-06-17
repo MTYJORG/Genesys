@@ -831,26 +831,12 @@ namespace Genesys.UI.Components.Forms
 
             settings.Title = string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
             settings.WorksheetName = GetSafeWorksheetName(GetExportViewName());
-            // Empresa centralizada: por default la toma GenesysGridExportSettings / GenesysExportBranding.
-            // El formulario hijo puede sobrescribir settings.CompanyName en ConfigureExport(settings).
+            settings.CompanyName = "Genesys";
             settings.ExportDialogPersistenceKey = GetType().FullName + "." + GetExportViewName();
             settings.ExportDialogDefaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
             if (VistasAdministrador != null)
                 settings.CurrentViewLayout = VistasAdministrador.CaptureCurrentRuntimeLayout();
-
-            if (Filters != null)
-            {
-                var filterDescriptions = Filters.GetExportFilterDescriptions();
-                if (filterDescriptions != null)
-                {
-                    foreach (string filterDescription in filterDescriptions)
-                    {
-                        if (!string.IsNullOrWhiteSpace(filterDescription))
-                            settings.AdditionalFilterInfoLines.Add(filterDescription);
-                    }
-                }
-            }
 
             ConfigureExport(settings);
 
@@ -890,27 +876,14 @@ namespace Genesys.UI.Components.Forms
 
         protected virtual string GetDefaultExportFileName(string extension)
         {
-            string title = string.IsNullOrWhiteSpace(Text)
+            var title = string.IsNullOrWhiteSpace(Text)
                 ? GetType().Name
                 : Text;
 
-            string viewName = GetExportViewName();
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+                title = title.Replace(invalidChar, '_');
 
-            string fileName = string.IsNullOrWhiteSpace(viewName) ||
-                string.Equals(title, viewName, StringComparison.OrdinalIgnoreCase)
-                ? title
-                : title + " - " + viewName;
-
-            foreach (char invalidChar in Path.GetInvalidFileNameChars())
-                fileName = fileName.Replace(invalidChar, '_');
-
-            extension = string.IsNullOrWhiteSpace(extension)
-                ? string.Empty
-                : extension.Trim().TrimStart('.');
-
-            return string.IsNullOrWhiteSpace(extension)
-                ? fileName
-                : fileName + "." + extension;
+            return $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}";
         }
 
 

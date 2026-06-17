@@ -68,10 +68,9 @@
     <Compile Include="Controls\Filters\GenesysGridFilterPersistence.cs" />
     <Compile Include="Controls\Filters\GenesysGridFilterRequest.cs" />
     <Compile Include="Controls\Filters\GenesysGridFilterResult.cs" />
-    <Compile Include="Controls\Filters\GenesysGridFiltersPanel.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
+    <Compile Include="Controls\Filters\GenesysGridFiltersPanel.cs" />
     <Compile Include="Controls\Filters\GenesysGridFilterState.cs" />
+    <Compile Include="Controls\GridViews\GenesysGridColumnVisualHelper.cs" />
     <Compile Include="Controls\GridViews\GridConfigurator.cs" />
     <Compile Include="Controls\GridViews\GridNavigator.cs">
       <SubType>UserControl</SubType>
@@ -100,8 +99,10 @@
     <Compile Include="Diagnostics\GenesysTrace.cs" />
     <Compile Include="Forms\GenesysFormVisual.cs" />
     <Compile Include="Forms\GenesysGridForm.cs" />
+    <Compile Include="Forms\Services\GenesysLoadingForm.cs" />
     <Compile Include="Forms\GenesysPanelFactory.cs" />
     <Compile Include="Forms\GenesysSimpleForm.cs" />
+    <Compile Include="Forms\Services\GenesysFormLauncher.cs" />
     <Compile Include="Forms\Services\GenesysGridExportService.cs" />
     <Compile Include="GenesysUI.cs" />
     <Compile Include="Controls\Toolbar\BotonInfo.cs" />

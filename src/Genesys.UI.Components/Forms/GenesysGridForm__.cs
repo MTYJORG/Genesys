@@ -5,8 +5,12 @@ using Genesys.UI.Components.Controls.Messages;
 using Genesys.UI.Components.Controls.Toolbar;
 using Genesys.UI.Components.Forms.Services;
 using Genesys.UI.Components.Visual;
+using Syncfusion.Pdf;
+using Syncfusion.Pdf.Graphics;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGridConverter;
+using Syncfusion.XlsIO;
 using System;
 using System.Data;
 using System.Drawing;
@@ -800,78 +804,191 @@ namespace Genesys.UI.Components.Forms
 
         protected virtual void ExportarExcel()
         {
-            GenesysGridExportSettings settings = CreateExportSettings();
-
             exportService?.ExportarExcel(
                 GetDefaultExportFileName("xlsx"),
-                settings);
+                CreateExcelExportingOptions(),
+                ConfigureExcelWorkbook);
 
             ExportarExcelRequested?.Invoke(this, EventArgs.Empty);
         }
 
         protected virtual void ExportarPdf()
         {
-            GenesysGridExportSettings settings = CreateExportSettings();
-
             exportService?.ExportarPdf(
                 GetDefaultExportFileName("pdf"),
-                settings);
+                CreatePdfExportingOptions(),
+                ConfigurePdfDocument);
 
             ExportarPdfRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>
-        /// Crea la configuración única de exportación.
-        /// El framework captura la Vista activa completa para que Excel/PDF usen Width, Alignment, Format y Visible
-        /// desde GridViewLayout antes de cualquier fallback por grid/tipo de dato.
-        /// </summary>
-        protected virtual GenesysGridExportSettings CreateExportSettings()
+        protected virtual ExcelExportingOptions CreateExcelExportingOptions()
         {
-            GenesysGridExportSettings settings = new GenesysGridExportSettings();
-
-            settings.Title = string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
-            settings.WorksheetName = GetSafeWorksheetName(GetExportViewName());
-            // Empresa centralizada: por default la toma GenesysGridExportSettings / GenesysExportBranding.
-            // El formulario hijo puede sobrescribir settings.CompanyName en ConfigureExport(settings).
-            settings.ExportDialogPersistenceKey = GetType().FullName + "." + GetExportViewName();
-            settings.ExportDialogDefaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-
-            if (VistasAdministrador != null)
-                settings.CurrentViewLayout = VistasAdministrador.CaptureCurrentRuntimeLayout();
-
-            if (Filters != null)
+            var options = new ExcelExportingOptions
             {
-                var filterDescriptions = Filters.GetExportFilterDescriptions();
-                if (filterDescriptions != null)
+                // Valor real por defecto para que Excel pueda sumar, filtrar y formular.
+                // Si un formulario necesita exportar exactamente el texto visible, puede sobreescribir este método.
+                ExportMode = ExportMode.Value,
+                ExcelVersion = ExcelVersion.Excel2013,
+                ExportStackedHeaders = true,
+                ExportUnboundRows = true,
+                AllowOutlining = true,
+                StartRowIndex = 4,
+                StartColumnIndex = 1
+            };
+
+            AddHiddenColumnsToExcelExport(options);
+
+            return options;
+        }
+
+        protected virtual PdfExportingOptions CreatePdfExportingOptions()
+        {
+            var options = new PdfExportingOptions
+            {
+                ExportStackedHeaders = true,
+                ExportUnboundRows = true,
+                AutoColumnWidth = true,
+                AutoRowHeight = true,
+                RepeatHeaders = true,
+                FitAllColumnsInOnePage = true,
+
+                // true = exporta el texto/formato visible; false = valor real.
+                // En PDF normalmente conviene respetar la presentación visual del grid.
+                ExportFormat = true
+            };
+
+            AddHiddenColumnsToPdfExport(options);
+
+            return options;
+        }
+
+        protected virtual void ConfigureExcelWorkbook(IWorkbook workbook)
+        {
+            if (workbook == null || workbook.Worksheets.Count == 0)
+                return;
+
+            IWorksheet sheet = workbook.Worksheets[0];
+            sheet.Name = GetSafeWorksheetName(Text);
+
+            sheet.Range["A1"].Text = string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
+            sheet.Range["A2"].Text = "Generado: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            sheet.Range["A1"].CellStyle.Font.Bold = true;
+            sheet.Range["A1"].CellStyle.Font.Size = 14;
+            sheet.Range["A2"].CellStyle.Font.Italic = true;
+
+            if (sheet.UsedRange != null)
+            {
+                sheet.UsedRange.AutofitColumns();
+
+                try
                 {
-                    foreach (string filterDescription in filterDescriptions)
-                    {
-                        if (!string.IsNullOrWhiteSpace(filterDescription))
-                            settings.AdditionalFilterInfoLines.Add(filterDescription);
-                    }
+                    sheet.AutoFilters.FilterRange = sheet.UsedRange;
+                }
+                catch
+                {
+                    // Algunas combinaciones de headers agrupados/merged cells no aceptan autofiltro.
                 }
             }
 
-            ConfigureExport(settings);
-
-            return settings;
+            workbook.BuiltInDocumentProperties.Author = Environment.UserName;
+            workbook.BuiltInDocumentProperties.Title = string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
         }
 
-        /// <summary>
-        /// Punto único para que los formularios hijos personalicen la exportación.
-        /// No se sobreescriben métodos separados para Excel/PDF; aquí se ajusta settings.ExcelOptions,
-        /// settings.PdfOptions, columnas excluidas, colores, papel, etc.
-        /// </summary>
-        protected virtual void ConfigureExport(GenesysGridExportSettings settings)
+        protected virtual void ConfigurePdfDocument(PdfDocument document)
         {
+            if (document == null)
+                return;
+
+            document.PageSettings.Orientation = PdfPageOrientation.Landscape;
+
+            AddPdfHeader(document);
+            AddPdfFooter(document);
         }
 
-        private string GetExportViewName()
+        private void AddHiddenColumnsToExcelExport(ExcelExportingOptions options)
         {
-            if (VistasAdministrador != null && !string.IsNullOrWhiteSpace(VistasAdministrador.CurrentViewName))
-                return VistasAdministrador.CurrentViewName;
+            if (options == null || Grid == null || Grid.Columns == null)
+                return;
 
-            return string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
+            foreach (var column in Grid.Columns)
+            {
+                if (column == null || column.Visible)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(column.MappingName) &&
+                    !options.ExcludeColumns.Contains(column.MappingName))
+                {
+                    options.ExcludeColumns.Add(column.MappingName);
+                }
+            }
+        }
+
+        private void AddHiddenColumnsToPdfExport(PdfExportingOptions options)
+        {
+            if (options == null || Grid == null || Grid.Columns == null)
+                return;
+
+            foreach (var column in Grid.Columns)
+            {
+                if (column == null || column.Visible)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(column.MappingName) &&
+                    !options.ExcludeColumns.Contains(column.MappingName))
+                {
+                    options.ExcludeColumns.Add(column.MappingName);
+                }
+            }
+        }
+
+        private void AddPdfHeader(PdfDocument document)
+        {
+            PdfFont titleFont = new PdfStandardFont(PdfFontFamily.Helvetica, 10, PdfFontStyle.Bold);
+            PdfFont dateFont = new PdfStandardFont(PdfFontFamily.Helvetica, 8);
+
+            var header = new PdfPageTemplateElement(document.PageSettings.Width, 36);
+            header.Graphics.DrawString(
+                string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text,
+                titleFont,
+                PdfBrushes.Black,
+                0,
+                4);
+
+            header.Graphics.DrawString(
+                "Generado: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                dateFont,
+                PdfBrushes.Black,
+                0,
+                20);
+
+            document.Template.Top = header;
+        }
+
+        private void AddPdfFooter(PdfDocument document)
+        {
+            PdfFont font = new PdfStandardFont(PdfFontFamily.Helvetica, 8);
+            var footer = new PdfPageTemplateElement(document.PageSettings.Width, 24);
+
+            PdfPageNumberField pageNumber = new PdfPageNumberField(font, PdfBrushes.Black);
+            PdfPageCountField pageCount = new PdfPageCountField(font, PdfBrushes.Black);
+            PdfCompositeField pageInfo = new PdfCompositeField(
+                font,
+                PdfBrushes.Black,
+                "Página {0} de {1}",
+                pageNumber,
+                pageCount);
+
+            pageInfo.Bounds = new RectangleF(
+                0,
+                4,
+                document.PageSettings.Width,
+                18);
+            pageInfo.StringFormat = new PdfStringFormat(PdfTextAlignment.Right);
+            pageInfo.Draw(footer.Graphics, new PointF(0, 4));
+
+            document.Template.Bottom = footer;
         }
 
         private static string GetSafeWorksheetName(string name)
@@ -890,27 +1007,14 @@ namespace Genesys.UI.Components.Forms
 
         protected virtual string GetDefaultExportFileName(string extension)
         {
-            string title = string.IsNullOrWhiteSpace(Text)
+            var title = string.IsNullOrWhiteSpace(Text)
                 ? GetType().Name
                 : Text;
 
-            string viewName = GetExportViewName();
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+                title = title.Replace(invalidChar, '_');
 
-            string fileName = string.IsNullOrWhiteSpace(viewName) ||
-                string.Equals(title, viewName, StringComparison.OrdinalIgnoreCase)
-                ? title
-                : title + " - " + viewName;
-
-            foreach (char invalidChar in Path.GetInvalidFileNameChars())
-                fileName = fileName.Replace(invalidChar, '_');
-
-            extension = string.IsNullOrWhiteSpace(extension)
-                ? string.Empty
-                : extension.Trim().TrimStart('.');
-
-            return string.IsNullOrWhiteSpace(extension)
-                ? fileName
-                : fileName + "." + extension;
+            return $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}";
         }
 
 

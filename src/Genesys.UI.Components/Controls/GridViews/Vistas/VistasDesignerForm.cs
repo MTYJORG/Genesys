@@ -1,3 +1,14 @@
+// ============================================================================
+// DOCUMENTACION DE CAMBIOS
+// Fecha: 2026-06-14
+// Autor registro: JR
+// Archivo: VistasDesignerForm.cs
+// Consecutivos aplicables: 20260614 JR-005, 20260614 JR-008
+// Total de bloques modificados documentados: 14
+// Total lineas agregadas: 195
+// Total lineas omitidas: 7
+// ============================================================================
+
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -38,6 +49,18 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
         private DataTable designTable;
 
         private bool loading;
+        // 20260614 JR-008
+        // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+        // Archivo: VistasDesignerForm.cs.
+        // Lineas agregadas en version nueva: L41-L42.
+        // Lineas omitidas de version anterior: ninguna.
+        // Detalle agregado:
+        // +         private string loadedDesignerSignature;
+        // +         private bool appliedChangesNotSaved;
+        // Fin 20260614 JR-008
+
+        private string loadedDesignerSignature;
+        private bool appliedChangesNotSaved;
 
         private readonly List<GenesysGridColumnProfile> profiles =
             new List<GenesysGridColumnProfile>();
@@ -314,6 +337,16 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (manager != null &&
                 manager.SaveAsNewViewFromDesigner())
             {
+                // 20260614 JR-008
+                // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+                // Archivo: VistasDesignerForm.cs.
+                // Lineas agregadas en version nueva: L319-L319.
+                // Lineas omitidas de version anterior: ninguna.
+                // Detalle agregado:
+                // +                 appliedChangesNotSaved = false;
+                // Fin 20260614 JR-008
+
+                appliedChangesNotSaved = false;
                 LoadViews();
                 ReloadDesign();
             }
@@ -342,6 +375,16 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             finally
             {
                 loading = false;
+                // 20260614 JR-008
+                // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+                // Archivo: VistasDesignerForm.cs.
+                // Lineas agregadas en version nueva: L348-L348.
+                // Lineas omitidas de version anterior: ninguna.
+                // Detalle agregado:
+                // +                 UpdateLoadedDesignerSignature();
+                // Fin 20260614 JR-008
+
+                UpdateLoadedDesignerSignature();
             }
         }
 
@@ -642,6 +685,22 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                         {
                             SetValue(RowDecimals, columnName, DisplayAutomatic);
                         }
+                        // 20260614 JR-008
+                        // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+                        // Archivo: VistasDesignerForm.cs.
+                        // Lineas agregadas en version nueva: L649-L657.
+                        // Lineas omitidas de version anterior: ninguna.
+                        // Fin 20260614 JR-008
+
+                        else if (IsIdentifierDisplay(selected))
+                        {
+                            // Identificador se guarda por ahora como F0: sin separador de miles
+                            // y sin decimales. La fila Decimales queda en 0 para dejar
+                            // explícito el formato resultante.
+                            // Si en el futuro se permite F1/F2/F3, este es el punto
+                            // donde debe conservarse el valor elegido por el usuario.
+                            SetValue(RowDecimals, columnName, "0");
+                        }
                         else
                         {
                             string currentDecimals = GetValue(RowDecimals, columnName);
@@ -671,7 +730,22 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             // Si el formato es Automatico (Format == ""), los decimales
             // pertenecen al renderer de Syncfusion y no se editan desde la vista.
-            if (IsAutomaticDisplay(formatDisplay))
+            // 20260614 JR-008
+            // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+            // Archivo: VistasDesignerForm.cs.
+            // Lineas agregadas en version nueva: L687-L693.
+            // Lineas omitidas de version anterior: L674-L674.
+            // Detalle omitido:
+            // -             if (IsAutomaticDisplay(formatDisplay))
+            // Fin 20260614 JR-008
+
+            //
+            // Identificador se guarda por ahora como F0. Se deja bloqueado
+            // para evitar configuraciones inconsistentes en folios/IDs.
+            // Preparado para futuro: si se desea soportar F1/F2/F3, quitar
+            // IsIdentifierDisplay(formatDisplay) de esta condición y BuildFormat
+            // ya puede tomar el valor de decimales.
+            if (IsAutomaticDisplay(formatDisplay) || IsIdentifierDisplay(formatDisplay))
                 return;
 
             ShowOptionsMenu(
@@ -793,7 +867,18 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                         ColumnName = original.ColumnName,
                         HeaderText = GetValue(RowHeader, columnName),
                         Visible = ToBool(GetValue(RowVisible, columnName)),
-                        Width = SafeDouble(GetValue(RowWidth, columnName), GetSuggestedWidth(kind)),
+                        // 20260614 JR-005
+                        // Motivo: Anchos reales en Disenador de vistas.
+                        // Archivo: VistasDesignerForm.cs.
+                        // Lineas agregadas en version nueva: L815-L815.
+                        // Lineas omitidas de version anterior: L796-L796.
+                        // Detalle omitido:
+                        // -                         Width = SafeDouble(GetValue(RowWidth, columnName), GetSuggestedWidth(kind)),
+                        // Detalle agregado:
+                        // +                         Width = SafeDouble(GetValue(RowWidth, columnName), original.Width),
+                        // Fin 20260614 JR-005
+
+                        Width = SafeDouble(GetValue(RowWidth, columnName), original.Width),
                         Decimals = decimals,
                         Format = ResolveDesignerFormat(original, GetValue(RowFormat, columnName), decimals, kind),
                         Alignment = FromAlignmentDisplay(GetValue(RowAlignment, columnName)),
@@ -811,8 +896,27 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             if (save)
             {
-                manager.SaveCurrentOrAsk();
-                LoadViews();
+                // 20260614 JR-008
+                // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+                // Archivo: VistasDesignerForm.cs.
+                // Lineas agregadas en version nueva: L833-L843.
+                // Lineas omitidas de version anterior: L814-L815.
+                // Detalle omitido:
+                // -                 manager.SaveCurrentOrAsk();
+                // -                 LoadViews();
+                // Fin 20260614 JR-008
+
+                bool saved = manager.SaveCurrentOrAsk();
+
+                if (saved)
+                {
+                    appliedChangesNotSaved = false;
+                    LoadViews();
+                }
+            }
+            else
+            {
+                appliedChangesNotSaved = true;
             }
 
             ReloadDesign();
@@ -845,6 +949,152 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                     .ToList();
 
             manager.ReorderColumnsByMappingNames(orderedColumnNames);
+        // 20260614 JR-008
+        // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+        // Archivo: VistasDesignerForm.cs.
+        // Lineas agregadas en version nueva: L876-L1014.
+        // Lineas omitidas de version anterior: ninguna.
+        // Fin 20260614 JR-008
+
+        }
+
+        private void UpdateLoadedDesignerSignature()
+        {
+            loadedDesignerSignature = BuildDesignerSignature();
+        }
+
+        private bool HasUnappliedDesignerChanges()
+        {
+            string currentSignature = BuildDesignerSignature();
+
+            return !string.Equals(
+                currentSignature,
+                loadedDesignerSignature ?? string.Empty,
+                StringComparison.Ordinal);
+        }
+
+        private string BuildDesignerSignature()
+        {
+            if (designTable == null || designGrid == null)
+                return string.Empty;
+
+            var parts = new List<string>();
+
+            foreach (GridColumn designerColumn in GetDesignerColumnsInVisualOrder())
+            {
+                if (designerColumn == null)
+                    continue;
+
+                string columnName = designerColumn.MappingName;
+
+                if (string.IsNullOrWhiteSpace(columnName) ||
+                    string.Equals(columnName, "Property", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                parts.Add("COLUMN=" + EscapeSignatureValue(columnName));
+
+                foreach (System.Data.DataRow row in designTable.Rows)
+                {
+                    if (row == null)
+                        continue;
+
+                    string rowName = Convert.ToString(row["Property"]);
+
+                    if (string.IsNullOrWhiteSpace(rowName))
+                        continue;
+
+                    string value = designTable.Columns.Contains(columnName)
+                        ? Convert.ToString(row[columnName])
+                        : string.Empty;
+
+                    parts.Add(
+                        EscapeSignatureValue(rowName) +
+                        "=" +
+                        EscapeSignatureValue(value));
+                }
+            }
+
+            return string.Join("|", parts.ToArray());
+        }
+
+        private string EscapeSignatureValue(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("\\", "\\\\")
+                .Replace("|", "\\|")
+                .Replace("=", "\\=");
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            CommitDesignerEdits();
+
+            if (HasUnappliedDesignerChanges())
+            {
+                DialogResult result = MessageBox.Show(
+                    this,
+                    "Hay cambios en el diseñador que no han sido aplicados.\n\n¿Deseas aplicarlos y guardarlos antes de cerrar?",
+                    "Diseñador de vistas",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                if (result == DialogResult.Yes)
+                {
+                    ApplyAll(true);
+
+                    if (HasUnappliedDesignerChanges() || appliedChangesNotSaved)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+
+                    base.OnFormClosing(e);
+                    return;
+                }
+
+                // No: descarta únicamente lo editado en el diseñador que no fue aplicado.
+                // Si antes ya existían cambios aplicados al grid pero no guardados,
+                // se preguntará a continuación si deben guardarse.
+            }
+
+            if (appliedChangesNotSaved)
+            {
+                DialogResult result = MessageBox.Show(
+                    this,
+                    "Los cambios fueron aplicados al grid, pero no guardados en la vista.\n\n¿Deseas guardar la vista antes de cerrar?",
+                    "Diseñador de vistas",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                if (result == DialogResult.Yes)
+                {
+                    bool saved = manager != null && manager.SaveCurrentOrAsk();
+
+                    if (!saved)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+
+                    appliedChangesNotSaved = false;
+                }
+            }
+
+            base.OnFormClosing(e);
         }
 
         private void CommitDesignerEdits()
@@ -1095,7 +1345,18 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             ColumnKind kind)
         {
             if (kind == ColumnKind.Numeric)
-                return new[] { DisplayAutomatic, "Número", "Moneda", "Porcentaje" };
+                // 20260614 JR-005
+                // Motivo: Anchos reales en Disenador de vistas.
+                // Archivo: VistasDesignerForm.cs.
+                // Lineas agregadas en version nueva: L1265-L1265.
+                // Lineas omitidas de version anterior: L1098-L1098.
+                // Detalle omitido:
+                // -                 return new[] { DisplayAutomatic, "Número", "Moneda", "Porcentaje" };
+                // Detalle agregado:
+                // +                 return new[] { DisplayAutomatic, "Identificador", "Número", "Moneda", "Porcentaje" };
+                // Fin 20260614 JR-005
+
+                return new[] { DisplayAutomatic, "Identificador", "Número", "Moneda", "Porcentaje" };
 
             if (kind == ColumnKind.Date)
                 return new[] { DisplayNotApplicable, "Fecha corta", "Fecha larga", "Fecha y hora" };
@@ -1103,19 +1364,9 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             return new[] { DisplayNotApplicable };
         }
 
-        private string[] GetAlignmentOptions(
-            ColumnKind kind)
+        private string[] GetAlignmentOptions(ColumnKind kind)
         {
-            if (kind == ColumnKind.Numeric)
-                return new[] { "Derecha", "Izquierda", "Centro" };
-
-            if (kind == ColumnKind.Date ||
-                kind == ColumnKind.Boolean)
-            {
-                return new[] { "Centro", "Izquierda", "Derecha" };
-            }
-
-            return new[] { "Izquierda", "Centro", "Derecha" };
+            return GenesysGridColumnVisualHelper.GetAlignmentDisplayOptionsForKind(kind.ToString());
         }
 
         private string[] GetSummaryOptions(
@@ -1211,7 +1462,24 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (current > 0)
                 return current.ToString();
 
-            return GetSuggestedWidth(kind).ToString();
+            // 20260614 JR-005
+            // Motivo: Anchos reales en Disenador de vistas.
+            // Archivo: VistasDesignerForm.cs.
+            // Lineas agregadas en version nueva: L1381-L1384.
+            // Lineas omitidas de version anterior: L1214-L1214.
+            // Detalle omitido:
+            // -             return GetSuggestedWidth(kind).ToString();
+            // Detalle agregado:
+            // +             // No inventar un ancho sugerido al cargar el diseñador.
+            // +             // Si la vista no trae ancho, se deja vacío para no sobrescribir
+            // +             // el ancho real al aplicar/guardar cambios no relacionados.
+            // +             return string.Empty;
+            // Fin 20260614 JR-005
+
+            // No inventar un ancho sugerido al cargar el diseñador.
+            // Si la vista no trae ancho, se deja vacío para no sobrescribir
+            // el ancho real al aplicar/guardar cambios no relacionados.
+            return string.Empty;
         }
 
         private int GetSuggestedWidth(
@@ -1264,35 +1532,9 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             return DisplayNotApplicable;
         }
 
-        private string ToAlignmentDisplayByKind(
-            string alignment,
-            ColumnKind kind)
+        private string ToAlignmentDisplayByKind(string alignment, ColumnKind kind)
         {
-            string display = ToAlignmentDisplay(alignment);
-
-            // Si el campo es numérico y no trae una alineación explícita útil,
-            // el diseñador debe sugerir Derecha como default.
-            // En muchos grids el default técnico llega como Left aunque el usuario
-            // nunca lo haya elegido, por eso se normaliza aquí.
-            if (kind == ColumnKind.Numeric &&
-                (string.IsNullOrWhiteSpace(alignment) ||
-                 string.Equals(display, "Izquierda", StringComparison.OrdinalIgnoreCase)))
-            {
-                return "Derecha";
-            }
-
-            if (string.IsNullOrWhiteSpace(alignment))
-            {
-                if (kind == ColumnKind.Date ||
-                    kind == ColumnKind.Boolean)
-                {
-                    return "Centro";
-                }
-
-                return "Izquierda";
-            }
-
-            return display;
+            return ToAlignmentDisplay(alignment);
         }
 
         private string ToSummaryDisplayByKind(
@@ -1382,6 +1624,22 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (IsAutomaticDisplay(display))
                 return string.Empty;
 
+            // 20260614 JR-008
+            // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+            // Archivo: VistasDesignerForm.cs.
+            // Lineas agregadas en version nueva: L1555-L1563.
+            // Lineas omitidas de version anterior: ninguna.
+            // Fin 20260614 JR-008
+
+            if (IsIdentifierDisplay(display))
+            {
+                // Identificador usa la familia F porque NO incluye separador de miles.
+                // Por ahora se fuerza F0. Si más adelante se habilitan decimales para
+                // identificadores, reemplazar el 0 por la precisión elegida:
+                // return "F" + Math.Max(0, Math.Min(4, decimals));
+                return "F0";
+            }
+
             string prefix = "N";
 
             if (string.Equals(display, "Moneda", StringComparison.OrdinalIgnoreCase))
@@ -1407,6 +1665,20 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (format.StartsWith("P", StringComparison.OrdinalIgnoreCase))
                 return "Porcentaje";
 
+            // 20260614 JR-008
+            // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+            // Archivo: VistasDesignerForm.cs.
+            // Lineas agregadas en version nueva: L1589-L1591.
+            // Lineas omitidas de version anterior: ninguna.
+            // Detalle agregado:
+            // +             if (format.StartsWith("F", StringComparison.OrdinalIgnoreCase))
+            // +                 return "Identificador";
+            // + (linea en blanco)
+            // Fin 20260614 JR-008
+
+            if (format.StartsWith("F", StringComparison.OrdinalIgnoreCase))
+                return "Identificador";
+
             return "Número";
         }
 
@@ -1416,6 +1688,19 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             return string.IsNullOrWhiteSpace(display) ||
                    string.Equals(display, DisplayAutomatic, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(display, "Automático", StringComparison.OrdinalIgnoreCase);
+        // 20260614 JR-008
+        // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+        // Archivo: VistasDesignerForm.cs.
+        // Lineas agregadas en version nueva: L1601-L1606.
+        // Lineas omitidas de version anterior: ninguna.
+        // Fin 20260614 JR-008
+
+        }
+
+        private bool IsIdentifierDisplay(
+            string display)
+        {
+            return string.Equals(display, "Identificador", StringComparison.OrdinalIgnoreCase);
         }
 
         private int GetDesignerDecimals(
@@ -1451,7 +1736,18 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 return false;
 
             char first = char.ToUpperInvariant(trimmed[0]);
-            if (first != 'N' && first != 'C' && first != 'P')
+            // 20260614 JR-008
+            // Motivo: Ajustes de diseñador: identificador y control de cambios aplicados.
+            // Archivo: VistasDesignerForm.cs.
+            // Lineas agregadas en version nueva: L1642-L1642.
+            // Lineas omitidas de version anterior: L1454-L1454.
+            // Detalle omitido:
+            // -             if (first != 'N' && first != 'C' && first != 'P')
+            // Detalle agregado:
+            // +             if (first != 'N' && first != 'C' && first != 'P' && first != 'F')
+            // Fin 20260614 JR-008
+
+            if (first != 'N' && first != 'C' && first != 'P' && first != 'F')
                 return false;
 
             int parsed;
@@ -1462,30 +1758,15 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             return true;
         }
 
-        private string ToAlignmentDisplay(
-            string alignment)
+        private string ToAlignmentDisplay(string alignment)
         {
-            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
-                return "Centro";
-
-            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
-                return "Derecha";
-
-            return "Izquierda";
+            return GenesysGridColumnVisualHelper.ToDisplayAlignment(alignment);
         }
 
-        private string FromAlignmentDisplay(
-            string display)
+        private string FromAlignmentDisplay(string display)
         {
-            if (string.Equals(display, "Centro", StringComparison.OrdinalIgnoreCase))
-                return "Center";
-
-            if (string.Equals(display, "Derecha", StringComparison.OrdinalIgnoreCase))
-                return "Right";
-
-            return "Left";
+            return GenesysGridColumnVisualHelper.FromDisplayAlignment(display);
         }
-
         private string ToSummaryDisplay(
             string summary)
         {

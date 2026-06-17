@@ -1,14 +1,3 @@
-// ============================================================================
-// DOCUMENTACION DE CAMBIOS
-// Fecha: 2026-06-14
-// Autor registro: JR
-// Archivo: VistasAdministrador.cs
-// Consecutivos aplicables: 20260614 JR-001, 20260614 JR-003, 20260614 JR-004
-// Total de bloques modificados documentados: 3
-// Total lineas agregadas: 106
-// Total lineas omitidas: 1
-// ============================================================================
-
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using System;
@@ -1578,18 +1567,6 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             {
                 hasChanges = false;
                 runtimeLayoutsByViewName.Clear();
-                // 20260614 JR-001
-                // Motivo: Guardado correcto de Vista Predeterminada.
-                // Archivo: VistasAdministrador.cs.
-                // Lineas agregadas en version nueva: L1590-L1591.
-                // Lineas omitidas de version anterior: ninguna.
-                // Detalle agregado:
-                // +                 runtimeInternalFiltersByViewName.Clear();
-                // +                 runtimeColumnFiltersByViewName.Clear();
-                // Fin 20260614 JR-001
-
-                runtimeInternalFiltersByViewName.Clear();
-                runtimeColumnFiltersByViewName.Clear();
                 UpdateButtonState();
                 return true;
             }
@@ -1620,112 +1597,6 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             try
             {
-                // 20260614 JR-001
-                // Motivo: Guardado correcto de Vista Predeterminada.
-                // Archivo: VistasAdministrador.cs.
-                // Lineas agregadas en version nueva: 
-                // Lineas omitidas de version anterior: ninguna.
-                // Fin 20260614 JR-001
-
-                KeyValuePair<string, GridViewLayout>? defaultItem = null;
-
-                foreach (KeyValuePair<string, GridViewLayout> item in runtimeLayoutsByViewName.ToArray())
-                {
-                    GridViewLayout layout = item.Value;
-
-                    if (layout == null)
-                        continue;
-
-                    string viewName = string.IsNullOrWhiteSpace(layout.ViewName)
-                        ? item.Key
-                        : layout.ViewName;
-
-                    if (IsDefaultView(viewName))
-                    {
-                        defaultItem = item;
-                        break;
-                    }
-                }
-
-                if (defaultItem.HasValue)
-                {
-                    GridViewLayout defaultLayout = defaultItem.Value.Value;
-                    bool defaultViewWasCurrent = IsDefaultView(currentViewName);
-
-                    if (defaultLayout != null)
-                    {
-                        string newViewName = GridViewPrompt.Ask(
-                            "Guardar vista Predeterminada",
-                            "La vista Predeterminada tiene cambios. Ingresa el nombre con el que deseas guardar esta vista:",
-                            string.Empty);
-
-                        if (string.IsNullOrWhiteSpace(newViewName))
-                            return false;
-
-                        newViewName = newViewName.Trim();
-
-                        if (IsDefaultView(newViewName))
-                        {
-                            MessageBox.Show(
-                                dialogOwner,
-                                "El nombre '" + DefaultViewName + "' está reservado.",
-                                "Guardar vista Predeterminada",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Information);
-                            return false;
-                        }
-
-                        IList<GridViewLayout> existingViews = persistenceService.LoadViews();
-
-                        if (existingViews != null && existingViews.Any(x =>
-                            x != null &&
-                            string.Equals(x.ViewName, newViewName, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            MessageBox.Show(
-                                dialogOwner,
-                                "Ya existe una vista llamada '" + newViewName + "'.",
-                                "Guardar vista Predeterminada",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Information);
-                            return false;
-                        }
-
-                        string defaultRuntimeKey = string.IsNullOrWhiteSpace(defaultLayout.ViewName)
-                            ? defaultItem.Value.Key
-                            : defaultLayout.ViewName;
-
-                        defaultLayout.GridKey = string.IsNullOrWhiteSpace(defaultLayout.GridKey) ? gridKey : defaultLayout.GridKey;
-                        defaultLayout.ViewName = newViewName;
-                        defaultLayout.IsDefault = false;
-                        defaultLayout.ModifiedAt = DateTime.Now;
-
-                        if (defaultLayout.CreatedAt == DateTime.MinValue)
-                            defaultLayout.CreatedAt = DateTime.Now;
-
-                        store.Save(defaultLayout);
-
-                        string defaultInternalFilterXml;
-                        if (runtimeInternalFiltersByViewName.TryGetValue(defaultRuntimeKey, out defaultInternalFilterXml))
-                            SaveInternalGridFiltersForView(newViewName, defaultInternalFilterXml);
-                        else
-                            SaveInternalGridFiltersForView(newViewName);
-
-                        runtimeLayoutsByViewName.Remove(defaultItem.Value.Key);
-                        runtimeInternalFiltersByViewName.Remove(defaultItem.Value.Key);
-                        runtimeInternalFiltersByViewName.Remove(defaultRuntimeKey);
-                        runtimeColumnFiltersByViewName.Remove(defaultItem.Value.Key);
-                        runtimeColumnFiltersByViewName.Remove(defaultRuntimeKey);
-
-                        if (defaultViewWasCurrent)
-                        {
-                            currentViewName = newViewName;
-                            PersistCurrentViewName();
-                        }
-
-                        RequestRefreshViews();
-                    }
-                }
-
                 foreach (KeyValuePair<string, GridViewLayout> item in runtimeLayoutsByViewName.ToArray())
                 {
                     GridViewLayout layout = item.Value;
@@ -1806,7 +1677,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 Width = column.Width,
                 Format = format,
                 Decimals = ExtractDecimals(format),
-                Alignment = GenesysGridColumnVisualHelper.DetectAlignment(column),
+                Alignment = DetectAlignment(column),
                 SummaryType = string.IsNullOrWhiteSpace(summaryType) ? "None" : summaryType,
                 Grouped = IsColumnGrouped(column.MappingName),
                 Frozen = IsColumnFrozen(column.MappingName)
@@ -1831,7 +1702,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             column.Format = profile.Format;
 
-            GenesysGridColumnVisualHelper.ApplyAlignment(column, profile.Alignment);
+            ApplyAlignment(column, profile.Alignment);
 
             if (string.IsNullOrWhiteSpace(profile.SummaryType) ||
                 string.Equals(profile.SummaryType, "None", StringComparison.OrdinalIgnoreCase))
@@ -1848,7 +1719,48 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             MarkChanged();
         }
-private int ExtractDecimals(string format)
+
+        private void ApplyAlignment(GridColumn column, string alignment)
+        {
+            if (column == null)
+                return;
+
+            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = HorizontalAlignment.Center;
+                column.HeaderStyle.HorizontalAlignment = HorizontalAlignment.Center;
+                return;
+            }
+
+            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = HorizontalAlignment.Right;
+                column.HeaderStyle.HorizontalAlignment = HorizontalAlignment.Right;
+                return;
+            }
+
+            column.CellStyle.HorizontalAlignment = HorizontalAlignment.Left;
+            column.HeaderStyle.HorizontalAlignment = HorizontalAlignment.Left;
+        }
+
+        private string DetectAlignment(GridColumn column)
+        {
+            try
+            {
+                if (column.CellStyle.HorizontalAlignment == HorizontalAlignment.Right)
+                    return "Right";
+
+                if (column.CellStyle.HorizontalAlignment == HorizontalAlignment.Center)
+                    return "Center";
+            }
+            catch
+            {
+            }
+
+            return "Left";
+        }
+
+        private int ExtractDecimals(string format)
         {
             if (string.IsNullOrWhiteSpace(format))
                 return 2;
@@ -1864,7 +1776,7 @@ private int ExtractDecimals(string format)
 
         private bool IsColumnGrouped(string columnName)
         {
-            if (grid == null || grid.GroupColumnDescriptions == null)
+            if (grid.GroupColumnDescriptions == null)
                 return false;
 
             foreach (var group in grid.GroupColumnDescriptions)
@@ -1879,7 +1791,7 @@ private int ExtractDecimals(string format)
 
         private void SetColumnGrouped(string columnName, bool grouped)
         {
-            if (grid == null || grid.GroupColumnDescriptions == null || string.IsNullOrWhiteSpace(columnName))
+            if (grid.GroupColumnDescriptions == null || string.IsNullOrWhiteSpace(columnName))
                 return;
 
             for (int i = grid.GroupColumnDescriptions.Count - 1; i >= 0; i--)
@@ -3833,9 +3745,9 @@ public class GridLayoutService
 
             foreach (GridColumn column in grid.Columns)
             {
-                //System.Diagnostics.Debug.WriteLine(       "CAPTURE VIEW [" + viewName + "] " +        column.MappingName +
-                //                                        " | Type=" + column.GetType().FullName +
-                //                                         " | Format=[" + column.Format + "]");
+                System.Diagnostics.Debug.WriteLine(       "CAPTURE VIEW [" + viewName + "] " +        column.MappingName +
+                                                        " | Type=" + column.GetType().FullName +
+                                                         " | Format=[" + column.Format + "]");
 
                 layout.Columns.Add(new GenesysGridColumnLayout
                 {
@@ -3844,9 +3756,7 @@ public class GridLayoutService
                     DisplayIndex = index,
                     Width = column.Width,
                     Visible = column.Visible,
-                    Format = column.Format,
-                    Alignment = GenesysGridColumnVisualHelper.DetectAlignment(column),
-                    Frozen = IsColumnFrozen(column)
+                    Format = column.Format
                 });
 
                 index++;
@@ -3881,7 +3791,6 @@ public class GridLayoutService
 
             ApplyColumns(layout);
             ReorderColumns(layout);
-            ApplyFrozenColumns(layout);
             ApplyGroups(layout);
             summaryService.Apply(layout);
             ApplySorts(layout);
@@ -3937,87 +3846,10 @@ public class GridLayoutService
                 if (savedColumn.Width > 0)
                     column.Width = savedColumn.Width;
 
+                // Siempre asignar formato, incluso vacío.
+                // Si no se limpia aquí, el formato runtime de una vista anterior
+                // puede quedarse vivo al aplicar otra vista.
                 column.Format = savedColumn.Format ?? string.Empty;
-
-                if (GenesysGridColumnVisualHelper.IsExplicitAlignment(savedColumn.Alignment))
-                    GenesysGridColumnVisualHelper.ApplyAlignment(column, savedColumn.Alignment);
-            }
-        }
-
-        private void ApplyFrozenColumns(GridViewLayout layout)
-        {
-            if (grid == null || layout == null || layout.Columns == null)
-                return;
-
-            int frozenCount = 0;
-
-            foreach (var savedColumn in layout.Columns.OrderBy(x => x.DisplayIndex))
-            {
-                if (savedColumn == null ||
-                    string.IsNullOrWhiteSpace(savedColumn.MappingName) ||
-                    !savedColumn.Frozen)
-                {
-                    continue;
-                }
-
-                GridColumn column = FindColumn(savedColumn.MappingName);
-                if (column == null)
-                    continue;
-
-                int index = grid.Columns.IndexOf(column);
-                if (index >= 0)
-                    frozenCount = Math.Max(frozenCount, index + 1);
-            }
-
-            SetFrozenColumnCount(frozenCount);
-        }
-private bool IsColumnFrozen(GridColumn column)
-        {
-            if (column == null || grid == null || grid.Columns == null)
-                return false;
-
-            int frozenCount = GetFrozenColumnCount();
-            if (frozenCount <= 0)
-                return false;
-
-            int index = grid.Columns.IndexOf(column);
-            return index >= 0 && index < frozenCount;
-        }
-
-        private int GetFrozenColumnCount()
-        {
-            if (grid == null)
-                return 0;
-
-            try
-            {
-                object value = GetPropertyValue(grid, "FrozenColumnCount");
-
-                int frozenCount;
-                if (value != null && int.TryParse(Convert.ToString(value), out frozenCount))
-                    return Math.Max(0, frozenCount);
-            }
-            catch
-            {
-            }
-
-            return 0;
-        }
-
-        private void SetFrozenColumnCount(int count)
-        {
-            if (grid == null)
-                return;
-
-            try
-            {
-                PropertyInfo property = grid.GetType().GetProperty("FrozenColumnCount");
-
-                if (property != null && property.CanWrite)
-                    property.SetValue(grid, Math.Max(0, count), null);
-            }
-            catch
-            {
             }
         }
 

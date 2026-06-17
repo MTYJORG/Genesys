@@ -446,7 +446,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             if (string.Equals(rowName, RowAlignment, StringComparison.OrdinalIgnoreCase))
                 grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value =
-                    NormalizeOneOf(grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value, new[] { "Izquierda", "Centro", "Derecha" }, "Izquierda");
+                    NormalizeOneOf(grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value, GenesysGridColumnVisualHelper.GetAlignmentDisplayOptions(), "Automático");
 
             if (string.Equals(rowName, RowFormat, StringComparison.OrdinalIgnoreCase))
                 grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value =
@@ -520,24 +520,12 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
         private string ToAlignmentDisplay(string alignment)
         {
-            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
-                return "Centro";
-
-            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
-                return "Derecha";
-
-            return "Izquierda";
+            return GenesysGridColumnVisualHelper.ToDisplayAlignment(alignment);
         }
 
         private string FromAlignmentDisplay(string display)
         {
-            if (string.Equals(display, "Centro", StringComparison.OrdinalIgnoreCase))
-                return "Center";
-
-            if (string.Equals(display, "Derecha", StringComparison.OrdinalIgnoreCase))
-                return "Right";
-
-            return "Left";
+            return GenesysGridColumnVisualHelper.FromDisplayAlignment(display);
         }
 
 

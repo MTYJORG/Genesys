@@ -9,10 +9,12 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using Genesys.UI.Components.Controls.GridViews;
+using Genesys.UI.Components.Controls.Toolbar;
+using Genesys.UI.Components.Forms;
 
 namespace Genesys.UI.Components.Controls.GridViews.Vistas
 {
-    public class VistasDesignerForm : Form
+    public class VistasDesignerForm : GenesysSimpleForm
     {
         private const string RowVisible = "Visible";
         private const string RowHeader = "Título";
@@ -31,17 +33,13 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
         private readonly VistasAdministrador manager;
 
         private ComboBox cboViews;
-        private Button btnNewView;
-        private Button btnReload;
-        private Button btnApply;
-        private Button btnSave;
-        private Button btnSaveAs;
-        private Button btnClose;
 
         private SfDataGrid designGrid;
         private DataTable designTable;
 
         private bool loading;
+        private string loadedDesignerSignature;
+        private bool appliedChangesNotSaved;
 
         private readonly List<GenesysGridColumnProfile> profiles =
             new List<GenesysGridColumnProfile>();
@@ -64,43 +62,75 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             ShowIcon = false;
             Size = new Size(1150, 540);
             MinimumSize = new Size(920, 430);
-            Font = new Font("Segoe UI", 9F);
-            BackColor = Color.White;
-            Padding = new Padding(10);
 
-            var topPanel = new Panel
+            if (ContentPanel != null)
+                ContentPanel.Padding = new Padding(10);
+
+            AddToolbarButton(
+                BotonTipo.Buscar,
+                "Aplicar",
+                "Aplicar cambios sin guardar la vista",
+                delegate { ApplyAll(false); });
+
+            AddToolbarButton(
+                BotonTipo.Guardar,
+                "Guardar",
+                "Guardar cambios en la vista activa",
+                delegate { ApplyAll(true); });
+
+            AddToolbarButton(
+                BotonTipo.Respaldar,
+                "Guardar como",
+                "Guardar como una nueva vista",
+                delegate { BtnSaveAs_Click(this, EventArgs.Empty); });
+
+            AddToolbarButton(
+                BotonTipo.Nuevo,
+                "Nueva vista",
+                "Crear una nueva vista a partir del diseño actual",
+                delegate { BtnNewView_Click(this, EventArgs.Empty); });
+
+            AddToolbarButton(
+                BotonTipo.Refrescar,
+                "Releer diseño",
+                "Descarta cambios no aplicados del diseñador y vuelve a leer la vista activa desde el grid",
+                delegate { ReloadDesign(); });
+
+            var topPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 44,
-                BackColor = Color.White
+                BackColor = Color.White,
+                ColumnCount = 3,
+                RowCount = 1,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
             };
+
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 286F));
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             var lblView = new Label
             {
                 Text = "Vista:",
                 AutoSize = false,
-                Width = 46,
-                Dock = DockStyle.Left,
+                Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.DimGray
+                ForeColor = Color.DimGray,
+                Margin = new Padding(0)
             };
 
             cboViews = new ComboBox
             {
-                Dock = DockStyle.Left,
                 Width = 280,
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0)
             };
 
             cboViews.SelectedIndexChanged += CboViews_SelectedIndexChanged;
-
-            btnNewView = CreateButton("Nueva vista...", 108);
-            btnNewView.Dock = DockStyle.Left;
-            btnNewView.Click += BtnNewView_Click;
-
-            btnReload = CreateButton("Recargar", 82);
-            btnReload.Dock = DockStyle.Left;
-            btnReload.Click += delegate { ReloadDesign(); };
 
             var hint = new Label
             {
@@ -108,14 +138,13 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = Color.Gray,
-                Padding = new Padding(10, 0, 0, 0)
+                Padding = new Padding(10, 0, 0, 0),
+                Margin = new Padding(0)
             };
 
-            topPanel.Controls.Add(hint);
-            topPanel.Controls.Add(btnReload);
-            topPanel.Controls.Add(btnNewView);
-            topPanel.Controls.Add(cboViews);
-            topPanel.Controls.Add(lblView);
+            topPanel.Controls.Add(lblView, 0, 0);
+            topPanel.Controls.Add(cboViews, 1, 0);
+            topPanel.Controls.Add(hint, 2, 0);
 
             designGrid = new SfDataGrid
             {
@@ -135,47 +164,41 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             designGrid.CellClick += DesignGrid_CellClick;
 
-            var bottomPanel = new FlowLayoutPanel
+            if (ContentPanel != null)
             {
-                Dock = DockStyle.Bottom,
-                Height = 44,
-                FlowDirection = FlowDirection.RightToLeft,
-                BackColor = Color.White,
-                Padding = new Padding(0, 8, 0, 0)
-            };
-
-            btnClose = CreateButton("Cerrar", 80);
-            btnSaveAs = CreateButton("Guardar como", 108);
-            btnSave = CreateButton("Guardar", 84);
-            btnApply = CreateButton("Aplicar", 84);
-
-            btnClose.Click += delegate { Close(); };
-            btnApply.Click += delegate { ApplyAll(false); };
-            btnSave.Click += delegate { ApplyAll(true); };
-            btnSaveAs.Click += BtnSaveAs_Click;
-
-            bottomPanel.Controls.Add(btnClose);
-            bottomPanel.Controls.Add(btnSaveAs);
-            bottomPanel.Controls.Add(btnSave);
-            bottomPanel.Controls.Add(btnApply);
-
-            Controls.Add(designGrid);
-            Controls.Add(bottomPanel);
-            Controls.Add(topPanel);
+                ContentPanel.Controls.Add(designGrid);
+                ContentPanel.Controls.Add(topPanel);
+            }
         }
 
-        private Button CreateButton(
-            string text,
-            int width)
+        private void ApplyColumnHeaderStyle(GridColumn column)
         {
-            return new Button
+            if (column == null || column.HeaderStyle == null)
+                return;
+
+            SetPropertyIfExists(column.HeaderStyle, "BackColor", Color.FromArgb(242, 246, 252));
+            SetPropertyIfExists(column.HeaderStyle, "TextColor", Color.MidnightBlue);
+            SetPropertyIfExists(column.HeaderStyle, "ForeColor", Color.MidnightBlue);
+            SetPropertyIfExists(column.HeaderStyle, "Font", new Font("Segoe UI", 9F, FontStyle.Bold));
+        }
+
+        private void SetPropertyIfExists(object instance, string propertyName, object value)
+        {
+            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
+                return;
+
+            try
             {
-                Text = text,
-                Width = width,
-                Height = 28,
-                FlatStyle = FlatStyle.System,
-                Margin = new Padding(6, 0, 0, 0)
-            };
+                PropertyInfo property = instance.GetType().GetProperty(propertyName);
+
+                if (property == null || !property.CanWrite)
+                    return;
+
+                property.SetValue(instance, value, null);
+            }
+            catch
+            {
+            }
         }
 
         private void LoadViews()
@@ -241,8 +264,33 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (string.IsNullOrWhiteSpace(viewName))
                 return;
 
-            manager.ApplyViewByName(viewName);
-            ReloadDesign();
+            SelectViewAndReloadDesigner(viewName);
+        }
+
+        private void SelectViewAndReloadDesigner(string viewName)
+        {
+            if (manager == null || string.IsNullOrWhiteSpace(viewName))
+                return;
+
+            loading = true;
+
+            try
+            {
+                manager.ApplyViewByName(viewName);
+            }
+            finally
+            {
+                loading = false;
+            }
+
+            // En especial para Predeterminada o vistas que aplican filtros superiores,
+            // el manager puede provocar un refresh/bind diferido. Releer el diseñador
+            // en el siguiente ciclo visual evita mostrar valores viejos del grid.
+            BeginInvoke(new Action(delegate
+            {
+                LoadViews();
+                ReloadDesign();
+            }));
         }
 
         private void BtnNewView_Click(
@@ -268,6 +316,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (manager != null &&
                 manager.SaveAsNewViewFromDesigner())
             {
+                appliedChangesNotSaved = false;
                 LoadViews();
                 ReloadDesign();
             }
@@ -296,6 +345,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             finally
             {
                 loading = false;
+                UpdateLoadedDesignerSignature();
             }
         }
 
@@ -371,6 +421,8 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 propertyColumn.HeaderStyle.HorizontalAlignment =
                     HorizontalAlignment.Center;
 
+                ApplyColumnHeaderStyle(propertyColumn);
+
                 propertyColumn.CellStyle.BackColor =
                     Color.FromArgb(245, 247, 250);
 
@@ -396,6 +448,8 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
                     column.HeaderStyle.HorizontalAlignment =
                         HorizontalAlignment.Center;
+
+                    ApplyColumnHeaderStyle(column);
 
                     designGrid.Columns.Add(column);
                 }
@@ -592,6 +646,15 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                         {
                             SetValue(RowDecimals, columnName, DisplayAutomatic);
                         }
+                        else if (IsIdentifierDisplay(selected))
+                        {
+                            // Identificador se guarda por ahora como F0: sin separador de miles
+                            // y sin decimales. La fila Decimales queda en 0 para dejar
+                            // explícito el formato resultante.
+                            // Si en el futuro se permite F1/F2/F3, este es el punto
+                            // donde debe conservarse el valor elegido por el usuario.
+                            SetValue(RowDecimals, columnName, "0");
+                        }
                         else
                         {
                             string currentDecimals = GetValue(RowDecimals, columnName);
@@ -621,7 +684,13 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             // Si el formato es Automatico (Format == ""), los decimales
             // pertenecen al renderer de Syncfusion y no se editan desde la vista.
-            if (IsAutomaticDisplay(formatDisplay))
+            //
+            // Identificador se guarda por ahora como F0. Se deja bloqueado
+            // para evitar configuraciones inconsistentes en folios/IDs.
+            // Preparado para futuro: si se desea soportar F1/F2/F3, quitar
+            // IsIdentifierDisplay(formatDisplay) de esta condición y BuildFormat
+            // ya puede tomar el valor de decimales.
+            if (IsAutomaticDisplay(formatDisplay) || IsIdentifierDisplay(formatDisplay))
                 return;
 
             ShowOptionsMenu(
@@ -743,7 +812,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                         ColumnName = original.ColumnName,
                         HeaderText = GetValue(RowHeader, columnName),
                         Visible = ToBool(GetValue(RowVisible, columnName)),
-                        Width = SafeDouble(GetValue(RowWidth, columnName), GetSuggestedWidth(kind)),
+                        Width = SafeDouble(GetValue(RowWidth, columnName), original.Width),
                         Decimals = decimals,
                         Format = ResolveDesignerFormat(original, GetValue(RowFormat, columnName), decimals, kind),
                         Alignment = FromAlignmentDisplay(GetValue(RowAlignment, columnName)),
@@ -761,8 +830,17 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             if (save)
             {
-                manager.SaveCurrentOrAsk();
-                LoadViews();
+                bool saved = manager.SaveCurrentOrAsk();
+
+                if (saved)
+                {
+                    appliedChangesNotSaved = false;
+                    LoadViews();
+                }
+            }
+            else
+            {
+                appliedChangesNotSaved = true;
             }
 
             ReloadDesign();
@@ -795,6 +873,145 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                     .ToList();
 
             manager.ReorderColumnsByMappingNames(orderedColumnNames);
+        }
+
+        private void UpdateLoadedDesignerSignature()
+        {
+            loadedDesignerSignature = BuildDesignerSignature();
+        }
+
+        private bool HasUnappliedDesignerChanges()
+        {
+            string currentSignature = BuildDesignerSignature();
+
+            return !string.Equals(
+                currentSignature,
+                loadedDesignerSignature ?? string.Empty,
+                StringComparison.Ordinal);
+        }
+
+        private string BuildDesignerSignature()
+        {
+            if (designTable == null || designGrid == null)
+                return string.Empty;
+
+            var parts = new List<string>();
+
+            foreach (GridColumn designerColumn in GetDesignerColumnsInVisualOrder())
+            {
+                if (designerColumn == null)
+                    continue;
+
+                string columnName = designerColumn.MappingName;
+
+                if (string.IsNullOrWhiteSpace(columnName) ||
+                    string.Equals(columnName, "Property", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                parts.Add("COLUMN=" + EscapeSignatureValue(columnName));
+
+                foreach (System.Data.DataRow row in designTable.Rows)
+                {
+                    if (row == null)
+                        continue;
+
+                    string rowName = Convert.ToString(row["Property"]);
+
+                    if (string.IsNullOrWhiteSpace(rowName))
+                        continue;
+
+                    string value = designTable.Columns.Contains(columnName)
+                        ? Convert.ToString(row[columnName])
+                        : string.Empty;
+
+                    parts.Add(
+                        EscapeSignatureValue(rowName) +
+                        "=" +
+                        EscapeSignatureValue(value));
+                }
+            }
+
+            return string.Join("|", parts.ToArray());
+        }
+
+        private string EscapeSignatureValue(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("\\", "\\\\")
+                .Replace("|", "\\|")
+                .Replace("=", "\\=");
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            CommitDesignerEdits();
+
+            if (HasUnappliedDesignerChanges())
+            {
+                DialogResult result = MessageBox.Show(
+                    this,
+                    "Hay cambios en el diseñador que no han sido aplicados.\n\n¿Deseas aplicarlos y guardarlos antes de cerrar?",
+                    "Diseñador de vistas",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                if (result == DialogResult.Yes)
+                {
+                    ApplyAll(true);
+
+                    if (HasUnappliedDesignerChanges() || appliedChangesNotSaved)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+
+                    base.OnFormClosing(e);
+                    return;
+                }
+
+                // No: descarta únicamente lo editado en el diseñador que no fue aplicado.
+                // Si antes ya existían cambios aplicados al grid pero no guardados,
+                // se preguntará a continuación si deben guardarse.
+            }
+
+            if (appliedChangesNotSaved)
+            {
+                DialogResult result = MessageBox.Show(
+                    this,
+                    "Los cambios fueron aplicados al grid, pero no guardados en la vista.\n\n¿Deseas guardar la vista antes de cerrar?",
+                    "Diseñador de vistas",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                if (result == DialogResult.Yes)
+                {
+                    bool saved = manager != null && manager.SaveCurrentOrAsk();
+
+                    if (!saved)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+
+                    appliedChangesNotSaved = false;
+                }
+            }
+
+            base.OnFormClosing(e);
         }
 
         private void CommitDesignerEdits()
@@ -1045,7 +1262,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             ColumnKind kind)
         {
             if (kind == ColumnKind.Numeric)
-                return new[] { DisplayAutomatic, "Número", "Moneda", "Porcentaje" };
+                return new[] { DisplayAutomatic, "Identificador", "Número", "Moneda", "Porcentaje" };
 
             if (kind == ColumnKind.Date)
                 return new[] { DisplayNotApplicable, "Fecha corta", "Fecha larga", "Fecha y hora" };
@@ -1161,7 +1378,10 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (current > 0)
                 return current.ToString();
 
-            return GetSuggestedWidth(kind).ToString();
+            // No inventar un ancho sugerido al cargar el diseñador.
+            // Si la vista no trae ancho, se deja vacío para no sobrescribir
+            // el ancho real al aplicar/guardar cambios no relacionados.
+            return string.Empty;
         }
 
         private int GetSuggestedWidth(
@@ -1332,6 +1552,15 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (IsAutomaticDisplay(display))
                 return string.Empty;
 
+            if (IsIdentifierDisplay(display))
+            {
+                // Identificador usa la familia F porque NO incluye separador de miles.
+                // Por ahora se fuerza F0. Si más adelante se habilitan decimales para
+                // identificadores, reemplazar el 0 por la precisión elegida:
+                // return "F" + Math.Max(0, Math.Min(4, decimals));
+                return "F0";
+            }
+
             string prefix = "N";
 
             if (string.Equals(display, "Moneda", StringComparison.OrdinalIgnoreCase))
@@ -1357,6 +1586,9 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             if (format.StartsWith("P", StringComparison.OrdinalIgnoreCase))
                 return "Porcentaje";
 
+            if (format.StartsWith("F", StringComparison.OrdinalIgnoreCase))
+                return "Identificador";
+
             return "Número";
         }
 
@@ -1366,6 +1598,12 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             return string.IsNullOrWhiteSpace(display) ||
                    string.Equals(display, DisplayAutomatic, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(display, "Automático", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsIdentifierDisplay(
+            string display)
+        {
+            return string.Equals(display, "Identificador", StringComparison.OrdinalIgnoreCase);
         }
 
         private int GetDesignerDecimals(
@@ -1401,7 +1639,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 return false;
 
             char first = char.ToUpperInvariant(trimmed[0]);
-            if (first != 'N' && first != 'C' && first != 'P')
+            if (first != 'N' && first != 'C' && first != 'P' && first != 'F')
                 return false;
 
             int parsed;

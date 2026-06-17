@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Genesys.UI.Components.Controls.GridViews
@@ -45,12 +45,6 @@ namespace Genesys.UI.Components.Controls.GridViews
         public double Width { get; set; }
         public bool Visible { get; set; }
         public string Format { get; set; }
-
-        // Propiedades visuales persistidas desde el diseñador de vistas.
-        // Se mantienen en el layout de columna para que sobrevivan al cambio
-        // de vista, cierre/apertura del formulario y rebinding del grid.
-        public string Alignment { get; set; }
-        public bool Frozen { get; set; }
     }
 
     [Serializable]

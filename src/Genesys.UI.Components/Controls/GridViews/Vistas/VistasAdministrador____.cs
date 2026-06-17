@@ -1,14 +1,3 @@
-// ============================================================================
-// DOCUMENTACION DE CAMBIOS
-// Fecha: 2026-06-14
-// Autor registro: JR
-// Archivo: VistasAdministrador.cs
-// Consecutivos aplicables: 20260614 JR-001, 20260614 JR-003, 20260614 JR-004
-// Total de bloques modificados documentados: 3
-// Total lineas agregadas: 106
-// Total lineas omitidas: 1
-// ============================================================================
-
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using System;
@@ -1578,16 +1567,6 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             {
                 hasChanges = false;
                 runtimeLayoutsByViewName.Clear();
-                // 20260614 JR-001
-                // Motivo: Guardado correcto de Vista Predeterminada.
-                // Archivo: VistasAdministrador.cs.
-                // Lineas agregadas en version nueva: L1590-L1591.
-                // Lineas omitidas de version anterior: ninguna.
-                // Detalle agregado:
-                // +                 runtimeInternalFiltersByViewName.Clear();
-                // +                 runtimeColumnFiltersByViewName.Clear();
-                // Fin 20260614 JR-001
-
                 runtimeInternalFiltersByViewName.Clear();
                 runtimeColumnFiltersByViewName.Clear();
                 UpdateButtonState();
@@ -1620,13 +1599,6 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             try
             {
-                // 20260614 JR-001
-                // Motivo: Guardado correcto de Vista Predeterminada.
-                // Archivo: VistasAdministrador.cs.
-                // Lineas agregadas en version nueva: 
-                // Lineas omitidas de version anterior: ninguna.
-                // Fin 20260614 JR-001
-
                 KeyValuePair<string, GridViewLayout>? defaultItem = null;
 
                 foreach (KeyValuePair<string, GridViewLayout> item in runtimeLayoutsByViewName.ToArray())
@@ -1806,7 +1778,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 Width = column.Width,
                 Format = format,
                 Decimals = ExtractDecimals(format),
-                Alignment = GenesysGridColumnVisualHelper.DetectAlignment(column),
+                Alignment = DetectAlignment(column),
                 SummaryType = string.IsNullOrWhiteSpace(summaryType) ? "None" : summaryType,
                 Grouped = IsColumnGrouped(column.MappingName),
                 Frozen = IsColumnFrozen(column.MappingName)
@@ -1831,7 +1803,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             column.Format = profile.Format;
 
-            GenesysGridColumnVisualHelper.ApplyAlignment(column, profile.Alignment);
+            ApplyAlignment(column, profile.Alignment);
 
             if (string.IsNullOrWhiteSpace(profile.SummaryType) ||
                 string.Equals(profile.SummaryType, "None", StringComparison.OrdinalIgnoreCase))
@@ -1848,7 +1820,48 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             MarkChanged();
         }
-private int ExtractDecimals(string format)
+
+        private void ApplyAlignment(GridColumn column, string alignment)
+        {
+            if (column == null)
+                return;
+
+            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                return;
+            }
+
+            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                return;
+            }
+
+            column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+            column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+        }
+
+        private string DetectAlignment(GridColumn column)
+        {
+            try
+            {
+                if (column.CellStyle.HorizontalAlignment == System.Windows.Forms.HorizontalAlignment.Right)
+                    return "Right";
+
+                if (column.CellStyle.HorizontalAlignment == System.Windows.Forms.HorizontalAlignment.Center)
+                    return "Center";
+            }
+            catch
+            {
+            }
+
+            return "Left";
+        }
+
+        private int ExtractDecimals(string format)
         {
             if (string.IsNullOrWhiteSpace(format))
                 return 2;
@@ -1864,7 +1877,7 @@ private int ExtractDecimals(string format)
 
         private bool IsColumnGrouped(string columnName)
         {
-            if (grid == null || grid.GroupColumnDescriptions == null)
+            if (grid.GroupColumnDescriptions == null)
                 return false;
 
             foreach (var group in grid.GroupColumnDescriptions)
@@ -1879,7 +1892,7 @@ private int ExtractDecimals(string format)
 
         private void SetColumnGrouped(string columnName, bool grouped)
         {
-            if (grid == null || grid.GroupColumnDescriptions == null || string.IsNullOrWhiteSpace(columnName))
+            if (grid.GroupColumnDescriptions == null || string.IsNullOrWhiteSpace(columnName))
                 return;
 
             for (int i = grid.GroupColumnDescriptions.Count - 1; i >= 0; i--)
@@ -3845,7 +3858,7 @@ public class GridLayoutService
                     Width = column.Width,
                     Visible = column.Visible,
                     Format = column.Format,
-                    Alignment = GenesysGridColumnVisualHelper.DetectAlignment(column),
+                    Alignment = DetectAlignment(column),
                     Frozen = IsColumnFrozen(column)
                 });
 
@@ -3937,10 +3950,16 @@ public class GridLayoutService
                 if (savedColumn.Width > 0)
                     column.Width = savedColumn.Width;
 
+                // Siempre asignar formato, incluso vacío.
+                // Si no se limpia aquí, el formato runtime de una vista anterior
+                // puede quedarse vivo al aplicar otra vista.
                 column.Format = savedColumn.Format ?? string.Empty;
 
-                if (GenesysGridColumnVisualHelper.IsExplicitAlignment(savedColumn.Alignment))
-                    GenesysGridColumnVisualHelper.ApplyAlignment(column, savedColumn.Alignment);
+                if (string.Equals(savedColumn.Alignment, "Center", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(savedColumn.Alignment, "Right", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyAlignment(column, savedColumn.Alignment);
+                }
             }
         }
 
@@ -3971,7 +3990,51 @@ public class GridLayoutService
 
             SetFrozenColumnCount(frozenCount);
         }
-private bool IsColumnFrozen(GridColumn column)
+
+        private void ApplyAlignment(GridColumn column, string alignment)
+        {
+            if (column == null)
+                return;
+
+            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                return;
+            }
+
+            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                return;
+            }
+
+            if (string.Equals(alignment, "Left", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+            }
+        }
+
+        private string DetectAlignment(GridColumn column)
+        {
+            try
+            {
+                if (column != null && column.CellStyle.HorizontalAlignment == System.Windows.Forms.HorizontalAlignment.Right)
+                    return "Right";
+
+                if (column != null && column.CellStyle.HorizontalAlignment == System.Windows.Forms.HorizontalAlignment.Center)
+                    return "Center";
+            }
+            catch
+            {
+            }
+
+            return "Left";
+        }
+
+        private bool IsColumnFrozen(GridColumn column)
         {
             if (column == null || grid == null || grid.Columns == null)
                 return false;

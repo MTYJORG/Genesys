@@ -228,16 +228,6 @@ namespace Genesys.UI.Components.Controls.Filters
                 ExecuteSearchIfEnabled();
             };
 
-            LookupTextBox.TextChanged += delegate
-            {
-                if (string.IsNullOrWhiteSpace(LookupTextBox.Text) && LookupTextBox.LookupControl != null)
-                {
-                    LookupTextBox.LookupControl.Text = string.Empty;
-                }
-
-                ExecuteSearchIfEnabled();
-            };
-
             LookupTextBox.Leave += delegate
             {
                 BeginInvoke(new MethodInvoker(delegate
@@ -398,123 +388,6 @@ namespace Genesys.UI.Components.Controls.Filters
             cboFiltro.DataSource = dataSource;
         }
 
-
-        /// <summary>
-        /// Devuelve los filtros superiores en texto legible para exportación.
-        /// Esta es la fuente oficial del panel de filtros para Excel/PDF; el exportador
-        /// no debe leer controles visuales directamente.
-        /// </summary>
-        public IList<string> GetExportFilterDescriptions()
-        {
-            var result = new List<string>();
-
-            string rangoFecha = cboRangoFecha.SelectedItem == null
-                ? "<Todas>"
-                : Convert.ToString(cboRangoFecha.SelectedItem);
-
-            if (!string.IsNullOrWhiteSpace(rangoFecha) && rangoFecha != "<Todas>")
-            {
-                string fechaLabel = GetExportLabel(lblFecha.Text, "Fecha");
-
-                result.Add(fechaLabel + ": " + rangoFecha);
-
-                if (dtpInicio.Visible)
-                    result.Add("Fecha inicio: " + dtpInicio.Value.Date.ToString("dd/MM/yyyy"));
-
-                if (dtpFinal.Visible)
-                    result.Add("Fecha final: " + dtpFinal.Value.Date.ToString("dd/MM/yyyy"));
-            }
-
-            string lookupValue = LookupTextBox == null ? string.Empty : (LookupTextBox.Text ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(lookupValue))
-            {
-                string lookupLabel = GetExportLabel(lblLookup.Text, "Lookup");
-
-                string lookupDescription = txtLookupDescripcion == null
-                    ? string.Empty
-                    : (txtLookupDescripcion.Text ?? string.Empty).Trim();
-
-                if (!string.IsNullOrWhiteSpace(lookupDescription))
-                    result.Add(lookupLabel + ": " + lookupValue + " - " + lookupDescription);
-                else
-                    result.Add(lookupLabel + ": " + lookupValue);
-            }
-
-            string comboDisplay = GetComboExportDisplayText();
-            if (!string.IsNullOrWhiteSpace(comboDisplay) && !IsDefaultFilterDisplayValue(comboDisplay))
-            {
-                string comboLabel = GetExportLabel(lblCombo.Text, "Estado");
-
-                result.Add(comboLabel + ": " + comboDisplay);
-            }
-
-            return result;
-        }
-
-        private static string GetExportLabel(string label, string defaultLabel)
-        {
-            string result = string.IsNullOrWhiteSpace(label)
-                ? defaultLabel
-                : label.Trim();
-
-            while (result.EndsWith(":", StringComparison.Ordinal))
-                result = result.Substring(0, result.Length - 1).TrimEnd();
-
-            return string.IsNullOrWhiteSpace(result) ? defaultLabel : result;
-        }
-
-        private string GetComboExportDisplayText()
-        {
-            if (cboFiltro == null || cboFiltro.SelectedIndex < 0)
-                return string.Empty;
-
-            object selectedItem = cboFiltro.SelectedItem;
-            if (selectedItem == null)
-                return string.Empty;
-
-            GenesysComboFilterItem genesysItem = selectedItem as GenesysComboFilterItem;
-            if (genesysItem != null)
-                return genesysItem.Text ?? string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(cboFiltro.DisplayMember))
-            {
-                try
-                {
-                    var property = selectedItem.GetType().GetProperty(cboFiltro.DisplayMember);
-                    if (property != null)
-                    {
-                        object value = property.GetValue(selectedItem, null);
-                        if (value != null)
-                            return Convert.ToString(value);
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            return Convert.ToString(selectedItem);
-        }
-
-        private static bool IsDefaultFilterDisplayValue(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return true;
-
-            value = value.Trim();
-
-            return string.Equals(value, "<Todas>", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "<Todos>", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "Todas", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "Todos", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "Todo", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "All", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "Seleccione", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "Seleccionar", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "N/A", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "-", StringComparison.OrdinalIgnoreCase);
-        }
-
         public GenesysGridFilterRequest BuildRequest()
         {
             bool todas = cboRangoFecha.SelectedItem != null &&
@@ -569,21 +442,6 @@ namespace Genesys.UI.Components.Controls.Filters
 
             try
             {
-                if (cboRangoFecha.Items.Contains("<Todas>"))
-                    cboRangoFecha.SelectedItem = "<Todas>";
-                else if (cboRangoFecha.Items.Count > 0)
-                    cboRangoFecha.SelectedIndex = 0;
-
-                ApplyRangoFecha();
-
-                LookupTextBox.Text = string.Empty;
-                txtLookupDescripcion.Text = string.Empty;
-
-                if (cboFiltro.Items.Count > 0)
-                    cboFiltro.SelectedIndex = 0;
-                else
-                    cboFiltro.SelectedIndex = -1;
-
                 if (!string.IsNullOrWhiteSpace(state.RangoFecha) &&
                     cboRangoFecha.Items.Contains(state.RangoFecha))
                 {

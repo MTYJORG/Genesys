@@ -1,3 +1,14 @@
+// ============================================================================
+// DOCUMENTACION DE CAMBIOS
+// Fecha: 2026-06-14
+// Autor registro: JR
+// Archivo: GridConfigurator.cs
+// Consecutivos aplicables: 20260614 JR-003, 20260614 JR-004
+// Total de bloques modificados documentados: 2
+// Total lineas agregadas: 32
+// Total lineas omitidas: 0
+// ============================================================================
+
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using System;
@@ -204,6 +215,16 @@ namespace Genesys.UI.Components.Controls.GridViews
             // Vacío significa "Automático" para Syncfusion; no debe heredar formato runtime.
             column.Format = savedColumn.Format ?? string.Empty;
 
+            // 20260614 JR-003; 20260614 JR-004
+            // Motivo: Alineacion automatica de numeros y fechas al reaplicar vistas / Persistencia de alineacion manual Center/Right.
+            // Archivo: GridConfigurator.cs.
+            // Lineas agregadas en version nueva: L207-L212.
+            // Lineas omitidas de version anterior: ninguna.
+            // Fin 20260614 JR-003; 20260614 JR-004
+
+            if (GenesysGridColumnVisualHelper.IsExplicitAlignment(savedColumn.Alignment))
+                GenesysGridColumnVisualHelper.ApplyAlignment(column, savedColumn.Alignment);
+
             if (savedColumn.Width > 0)
                 column.Width = savedColumn.Width;
 
@@ -240,9 +261,15 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return new GridNumericColumn();
 
             return new GridTextColumn();
-        }
+        // 20260614 JR-003; 20260614 JR-004
+        // Motivo: Alineacion automatica de numeros y fechas al reaplicar vistas / Persistencia de alineacion manual Center/Right.
+        // Archivo: GridConfigurator.cs.
+        // Lineas agregadas en version nueva: L249-L274.
+        // Lineas omitidas de version anterior: ninguna.
+        // Fin 20260614 JR-003; 20260614 JR-004
 
-        private static void ApplyDefaultHiddenColumns(SfDataGrid grid, DataTable table)
+        }
+public static void ApplyDefaultHiddenColumns(SfDataGrid grid, DataTable table)
         {
             if (grid == null || grid.Columns == null || table == null)
                 return;
@@ -430,4 +457,5 @@ namespace Genesys.UI.Components.Controls.GridViews
             }
         }
     }
+
 }

@@ -204,6 +204,12 @@ namespace Genesys.UI.Components.Controls.GridViews
             // Vacío significa "Automático" para Syncfusion; no debe heredar formato runtime.
             column.Format = savedColumn.Format ?? string.Empty;
 
+            if (string.Equals(savedColumn.Alignment, "Center", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(savedColumn.Alignment, "Right", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyAlignment(column, savedColumn.Alignment);
+                }
+
             if (savedColumn.Width > 0)
                 column.Width = savedColumn.Width;
 
@@ -240,6 +246,32 @@ namespace Genesys.UI.Components.Controls.GridViews
                 return new GridNumericColumn();
 
             return new GridTextColumn();
+        }
+
+        private static void ApplyAlignment(GridColumn column, string alignment)
+        {
+            if (column == null)
+                return;
+
+            if (string.Equals(alignment, "Center", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Center;
+                return;
+            }
+
+            if (string.Equals(alignment, "Right", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Right;
+                return;
+            }
+
+            if (string.Equals(alignment, "Left", StringComparison.OrdinalIgnoreCase))
+            {
+                column.CellStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+                column.HeaderStyle.HorizontalAlignment = System.Windows.Forms.HorizontalAlignment.Left;
+            }
         }
 
         public static void ApplyDefaultHiddenColumns(SfDataGrid grid, DataTable table)

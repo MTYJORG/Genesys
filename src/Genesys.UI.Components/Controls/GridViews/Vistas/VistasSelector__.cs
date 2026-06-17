@@ -1,14 +1,3 @@
-// ============================================================================
-// DOCUMENTACION DE CAMBIOS
-// Fecha: 2026-06-14
-// Autor registro: JR
-// Archivo: VistasSelector.cs
-// Consecutivos aplicables: 20260614 JR-006
-// Total de bloques modificados documentados: 1
-// Total lineas agregadas: 18
-// Total lineas omitidas: 11
-// ============================================================================
-
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -277,25 +266,6 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 };
                 currentMenu.Items.Add(save);
             }
-
-            // 20260614 JR-006
-            // Motivo: Menu contextual sin opcion duplicada en Predeterminada.
-            // Archivo: VistasSelector.cs.
-            // Lineas agregadas en version nueva: L270-L287.
-            // Lineas omitidas de version anterior: L270-L280.
-            // Detalle omitido:
-            // -             ToolStripMenuItem saveAs = new ToolStripMenuItem("Guardar estado actual como nueva vista...");
-            // -             saveAs.ToolTipText = "Crea una vista nueva tomando el estado actual del grid.";
-            // -             saveAs.Click += delegate
-            // -             {
-            // -                 if (!isCurrent)
-            // -                     manager.ApplyViewByName(viewName);
-            // - (linea en blanco)
-            // -                 manager.SaveAsNewViewFromSelector();
-            // -                 RefreshViews();
-            // -             };
-            // -             currentMenu.Items.Add(saveAs);
-            // Fin 20260614 JR-006
 
             // En la vista Predeterminada activa, la opción "Guardar" ya ejecuta
             // SaveAsNewViewFromSelector porque Predeterminada no se sobrescribe.

@@ -800,117 +800,30 @@ namespace Genesys.UI.Components.Forms
 
         protected virtual void ExportarExcel()
         {
-            GenesysGridExportSettings settings = CreateExportSettings();
-
             exportService?.ExportarExcel(
-                GetDefaultExportFileName("xlsx"),
-                settings);
+                GetDefaultExportFileName("xlsx"));
 
             ExportarExcelRequested?.Invoke(this, EventArgs.Empty);
         }
 
         protected virtual void ExportarPdf()
         {
-            GenesysGridExportSettings settings = CreateExportSettings();
-
             exportService?.ExportarPdf(
-                GetDefaultExportFileName("pdf"),
-                settings);
+                GetDefaultExportFileName("pdf"));
 
             ExportarPdfRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>
-        /// Crea la configuración única de exportación.
-        /// El framework captura la Vista activa completa para que Excel/PDF usen Width, Alignment, Format y Visible
-        /// desde GridViewLayout antes de cualquier fallback por grid/tipo de dato.
-        /// </summary>
-        protected virtual GenesysGridExportSettings CreateExportSettings()
-        {
-            GenesysGridExportSettings settings = new GenesysGridExportSettings();
-
-            settings.Title = string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
-            settings.WorksheetName = GetSafeWorksheetName(GetExportViewName());
-            // Empresa centralizada: por default la toma GenesysGridExportSettings / GenesysExportBranding.
-            // El formulario hijo puede sobrescribir settings.CompanyName en ConfigureExport(settings).
-            settings.ExportDialogPersistenceKey = GetType().FullName + "." + GetExportViewName();
-            settings.ExportDialogDefaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-
-            if (VistasAdministrador != null)
-                settings.CurrentViewLayout = VistasAdministrador.CaptureCurrentRuntimeLayout();
-
-            if (Filters != null)
-            {
-                var filterDescriptions = Filters.GetExportFilterDescriptions();
-                if (filterDescriptions != null)
-                {
-                    foreach (string filterDescription in filterDescriptions)
-                    {
-                        if (!string.IsNullOrWhiteSpace(filterDescription))
-                            settings.AdditionalFilterInfoLines.Add(filterDescription);
-                    }
-                }
-            }
-
-            ConfigureExport(settings);
-
-            return settings;
-        }
-
-        /// <summary>
-        /// Punto único para que los formularios hijos personalicen la exportación.
-        /// No se sobreescriben métodos separados para Excel/PDF; aquí se ajusta settings.ExcelOptions,
-        /// settings.PdfOptions, columnas excluidas, colores, papel, etc.
-        /// </summary>
-        protected virtual void ConfigureExport(GenesysGridExportSettings settings)
-        {
-        }
-
-        private string GetExportViewName()
-        {
-            if (VistasAdministrador != null && !string.IsNullOrWhiteSpace(VistasAdministrador.CurrentViewName))
-                return VistasAdministrador.CurrentViewName;
-
-            return string.IsNullOrWhiteSpace(Text) ? GetType().Name : Text;
-        }
-
-        private static string GetSafeWorksheetName(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                name = "Reporte";
-
-            foreach (char invalidChar in new[] { ':', '\\', '/', '?', '*', '[', ']' })
-                name = name.Replace(invalidChar, '_');
-
-            if (name.Length > 31)
-                name = name.Substring(0, 31);
-
-            return name;
-        }
-
         protected virtual string GetDefaultExportFileName(string extension)
         {
-            string title = string.IsNullOrWhiteSpace(Text)
+            var title = string.IsNullOrWhiteSpace(Text)
                 ? GetType().Name
                 : Text;
 
-            string viewName = GetExportViewName();
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+                title = title.Replace(invalidChar, '_');
 
-            string fileName = string.IsNullOrWhiteSpace(viewName) ||
-                string.Equals(title, viewName, StringComparison.OrdinalIgnoreCase)
-                ? title
-                : title + " - " + viewName;
-
-            foreach (char invalidChar in Path.GetInvalidFileNameChars())
-                fileName = fileName.Replace(invalidChar, '_');
-
-            extension = string.IsNullOrWhiteSpace(extension)
-                ? string.Empty
-                : extension.Trim().TrimStart('.');
-
-            return string.IsNullOrWhiteSpace(extension)
-                ? fileName
-                : fileName + "." + extension;
+            return $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}";
         }
 
 

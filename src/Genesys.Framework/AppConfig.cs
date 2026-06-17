@@ -14,7 +14,7 @@ namespace Genesys.Framework
 
             if (sModoProducción == "Si")
             {
-                ConnectionString = ConfigurationManager.ConnectionStrings["Contpaqi"].ConnectionString;
+                ConnectionString = ConfigurationManager.ConnectionStrings["conServerAdm"].ConnectionString;
 
                 if (string.IsNullOrWhiteSpace(ConnectionString))
                 {

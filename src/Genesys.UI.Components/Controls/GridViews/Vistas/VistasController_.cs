@@ -365,21 +365,15 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
         private void ApplyFiltersXml(string xml)
         {
-            if (filters == null)
+            if (filters == null || string.IsNullOrWhiteSpace(xml))
                 return;
+
+            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(GenesysGridFilterState));
 
             suppressFilterRuntimeTracking = true;
 
             try
             {
-                if (string.IsNullOrWhiteSpace(xml))
-                {
-                    filters.ApplyState(new GenesysGridFilterState());
-                    return;
-                }
-
-                var serializer = new System.Xml.Serialization.XmlSerializer(typeof(GenesysGridFilterState));
-
                 using (var reader = new StringReader(xml))
                 {
                     GenesysGridFilterState state = serializer.Deserialize(reader) as GenesysGridFilterState;

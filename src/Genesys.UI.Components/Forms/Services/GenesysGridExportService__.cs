@@ -82,22 +82,6 @@ namespace Genesys.UI.Components.Forms.Services
     }
 
     /// <summary>
-    /// Branding centralizado para exportaciones Genesys.
-    /// Puede configurarse una sola vez al iniciar la aplicación, por ejemplo en Program.cs.
-    /// </summary>
-    public static class GenesysExportBranding
-    {
-        static GenesysExportBranding()
-        {
-            CompanyName = "Genesys";
-            ApplicationName = "Genesys";
-        }
-
-        public static string CompanyName { get; set; }
-        public static string ApplicationName { get; set; }
-    }
-
-    /// <summary>
     /// Configuración única de exportación Excel/PDF.
     /// El framework asigna valores por default y cada formulario hijo puede sobrescribirlos
     /// desde un solo método: ConfigureExport(settings).
@@ -109,11 +93,10 @@ namespace Genesys.UI.Components.Forms.Services
             ExcelOptions = new ExcelExportingOptions();
             PdfOptions = new PdfExportingOptions();
             ExcludedColumns = new List<string>();
-            AdditionalFilterInfoLines = new List<string>();
 
             WorksheetName = "Reporte";
             Title = "Reporte";
-            CompanyName = GenesysExportBranding.CompanyName;
+            CompanyName = "Genesys";
 
             HeaderBackColor = Color.FromArgb(217, 225, 242);
             HeaderForeColor = Color.Black;
@@ -164,15 +147,6 @@ namespace Genesys.UI.Components.Forms.Services
             PdfExportTableSummaryOptionLevel = GenesysExportOptionLevel.UserSelectable;
             PdfApplyViewColumnWidthsOptionLevel = GenesysExportOptionLevel.UserSelectable;
             PdfAllowTextWrapOptionLevel = GenesysExportOptionLevel.UserSelectable;
-            IncludeGenerationInfoOptionLevel = GenesysExportOptionLevel.UserSelectable;
-            IncludeFilterInfoOptionLevel = GenesysExportOptionLevel.UserSelectable;
-            IncludeExportSummaryOptionLevel = GenesysExportOptionLevel.UserSelectable;
-            IncludeCorporateHeaderOptionLevel = GenesysExportOptionLevel.UserSelectable;
-
-            IncludeGenerationInfo = true;
-            IncludeFilterInfo = true;
-            IncludeExportSummary = false;
-            IncludeCorporateHeader = true;
 
             // Tamaño default en puntos PDF para CustomLandscape. 1 pulgada = 72 puntos.
             PdfCustomLandscapeSize = new SizeF(1224F, 792F); // Doble carta horizontal.
@@ -186,7 +160,7 @@ namespace Genesys.UI.Components.Forms.Services
             ExcelOptions.StartColumnIndex = 1;
 
             PdfOptions.ExportStackedHeaders = true;
-            PdfOptions.ExportUnboundRows = false;
+            PdfOptions.ExportUnboundRows = true;
             PdfOptions.AutoColumnWidth = false;
             PdfOptions.AutoRowHeight = true;
             PdfOptions.RepeatHeaders = true;
@@ -212,17 +186,6 @@ namespace Genesys.UI.Components.Forms.Services
         public string WorksheetName { get; set; }
         public string Title { get; set; }
         public string CompanyName { get; set; }
-
-        /// <summary>
-        /// Líneas de filtros externos/panel de filtros que el formulario hijo puede agregar.
-        /// Útil para filtros que no viven dentro del SfDataGrid.
-        /// </summary>
-        public IList<string> AdditionalFilterInfoLines { get; private set; }
-
-        /// <summary>
-        /// Proveedor opcional para que el formulario hijo entregue filtros legibles al exportar.
-        /// </summary>
-        public Func<IList<string>> FilterInfoProvider { get; set; }
 
         public Color HeaderBackColor { get; set; }
         public Color HeaderForeColor { get; set; }
@@ -309,32 +272,6 @@ namespace Genesys.UI.Components.Forms.Services
         public GenesysExportOptionLevel PdfApplyViewColumnWidthsOptionLevel { get; set; }
         public GenesysExportOptionLevel PdfAllowTextWrapOptionLevel { get; set; }
 
-        /// <summary>
-        /// Incluye datos de generación en salidas/documentos exportados.
-        /// </summary>
-        public bool IncludeGenerationInfo { get; set; }
-
-        /// <summary>
-        /// Incluye una referencia a filtros/vista activa cuando el framework disponga de esa información.
-        /// </summary>
-        public bool IncludeFilterInfo { get; set; }
-
-        /// <summary>
-        /// Incluye resumen operativo al final, por ejemplo total aproximado de registros exportados.
-        /// </summary>
-        public bool IncludeExportSummary { get; set; }
-
-        /// <summary>
-        /// Incluye encabezado corporativo en PDF y metadatos equivalentes en Excel.
-        /// En Excel no inserta filas antes del grid para conservar la primera línea como encabezado.
-        /// </summary>
-        public bool IncludeCorporateHeader { get; set; }
-
-        public GenesysExportOptionLevel IncludeGenerationInfoOptionLevel { get; set; }
-        public GenesysExportOptionLevel IncludeFilterInfoOptionLevel { get; set; }
-        public GenesysExportOptionLevel IncludeExportSummaryOptionLevel { get; set; }
-        public GenesysExportOptionLevel IncludeCorporateHeaderOptionLevel { get; set; }
-
         private static void TrySetProperty(object target, string propertyName, object value)
         {
             if (target == null || string.IsNullOrWhiteSpace(propertyName))
@@ -405,9 +342,6 @@ namespace Genesys.UI.Components.Forms.Services
                 if (fileResult == null || !fileResult.Accepted)
                     return;
 
-                if (!EnsureOutputFileAvailable(fileResult.FilePath, "Exportar a Excel"))
-                    continue;
-
                 var excelEngine = grid.ExportToExcel(grid.View, settings.ExcelOptions);
 
                 try
@@ -443,9 +377,6 @@ namespace Genesys.UI.Components.Forms.Services
                 if (fileResult == null || !fileResult.Accepted)
                     return;
 
-                if (!EnsureOutputFileAvailable(fileResult.FilePath, "Exportar a PDF"))
-                    continue;
-
                 PdfDocument document = new PdfDocument();
 
                 try
@@ -456,7 +387,6 @@ namespace Genesys.UI.Components.Forms.Services
                     // - Genesys conecta el CellExporting necesario para respetar
                     //   la alineación de la Vista activa sin cambiar el layout PDF de Syncfusion.
                     PdfExportingOptions pdfOptions = CreatePdfExportingOptions(settings);
-                    AttachPdfExportingFontHandler(settings, pdfOptions);
                     AttachPdfCellExportingHandler(settings, pdfOptions);
 
                     ApplyPdfDocumentOutputSettings(document, settings);
@@ -469,7 +399,6 @@ namespace Genesys.UI.Components.Forms.Services
                     SetPdfGridLayoutValue(layout, "Layout", settings.PdfScalingMode == GenesysPdfScalingMode.FitSheetOnOnePage || settings.PdfFitAllRowsInOnePage ? "OnePage" : "Paginate");
 
                     pdfGrid.Draw(page, new PointF(0, 0), layout);
-                    AppendPdfDocumentSummary(document, settings);
                     document.Save(fileResult.FilePath);
                 }
                 finally
@@ -486,7 +415,6 @@ namespace Genesys.UI.Components.Forms.Services
             if (settings == null)
                 settings = new GenesysGridExportSettings();
 
-            ApplyCentralizedBranding(settings);
             ResolveCurrentViewLayout(settings);
             AddDefaultExcludedColumns(settings);
             ApplyExcludedColumns(settings);
@@ -500,8 +428,6 @@ namespace Genesys.UI.Components.Forms.Services
             if (settings == null)
                 settings = new GenesysGridExportSettings();
 
-            ApplyCentralizedBranding(settings);
-
             // PDF también necesita conocer la Vista activa para resolver
             // Alignment = Automatic correctamente.
             // No se aplica ApplyAutomaticPdfPaper aquí para conservar el comportamiento
@@ -513,91 +439,6 @@ namespace Genesys.UI.Components.Forms.Services
             ApplyPdfNativeOptions(settings);
 
             return settings;
-        }
-
-        private void ApplyCentralizedBranding(GenesysGridExportSettings settings)
-        {
-            if (settings == null)
-                return;
-
-            if (string.IsNullOrWhiteSpace(settings.CompanyName) ||
-                string.Equals(settings.CompanyName, "Genesys", StringComparison.OrdinalIgnoreCase))
-            {
-                string company = ResolveCentralCompanyName();
-                if (!string.IsNullOrWhiteSpace(company))
-                    settings.CompanyName = company;
-            }
-        }
-
-        private static string ResolveCentralCompanyName()
-        {
-            if (!string.IsNullOrWhiteSpace(GenesysExportBranding.CompanyName))
-                return GenesysExportBranding.CompanyName;
-
-            string fromGenesysUi = TryResolveStaticStringFromType(
-                "Genesys.UI.Components.GenesysUI",
-                "CompanyName",
-                "Empresa",
-                "ApplicationName",
-                "ProductName");
-
-            if (!string.IsNullOrWhiteSpace(fromGenesysUi))
-                return fromGenesysUi;
-
-            return "Genesys";
-        }
-
-        private static string TryResolveStaticStringFromType(string typeName, params string[] propertyNames)
-        {
-            if (string.IsNullOrWhiteSpace(typeName) || propertyNames == null)
-                return null;
-
-            try
-            {
-                Type type = Type.GetType(typeName);
-
-                if (type == null)
-                {
-                    foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        try
-                        {
-                            type = assembly.GetType(typeName, false, true);
-                            if (type != null)
-                                break;
-                        }
-                        catch
-                        {
-                        }
-                    }
-                }
-
-                if (type == null)
-                    return null;
-
-                foreach (string propertyName in propertyNames)
-                {
-                    System.Reflection.PropertyInfo property = type.GetProperty(
-                        propertyName,
-                        System.Reflection.BindingFlags.Static |
-                        System.Reflection.BindingFlags.Public |
-                        System.Reflection.BindingFlags.NonPublic);
-
-                    if (property == null || !property.CanRead)
-                        continue;
-
-                    object value = property.GetValue(null, null);
-                    string text = value == null ? null : Convert.ToString(value);
-
-                    if (!string.IsNullOrWhiteSpace(text))
-                        return text;
-                }
-            }
-            catch
-            {
-            }
-
-            return null;
         }
 
         private void ResolveCurrentViewLayout(GenesysGridExportSettings settings)
@@ -795,7 +636,6 @@ namespace Genesys.UI.Components.Forms.Services
             IWorksheet sheet = workbook.Worksheets[0];
 
             ApplyExcelActiveViewFormatting(sheet, settings);
-            ApplyExcelPageSetup(sheet, settings);
 
             if (settings.ExcelAppendFooter)
                 AppendExcelExportFooter(sheet, settings);
@@ -1029,9 +869,6 @@ namespace Genesys.UI.Components.Forms.Services
             document.DocumentInformation.Subject = settings.Title;
             document.DocumentInformation.Author = Environment.UserName;
             document.DocumentInformation.Creator = settings.CompanyName;
-
-            AddPdfHeader(document, settings);
-            AddPdfFooter(document, settings);
         }
 
         /// <summary>
@@ -1174,13 +1011,12 @@ namespace Genesys.UI.Components.Forms.Services
             document.PageSettings.Orientation = PdfPageOrientation.Landscape;
             document.PageSettings.Margins.All = settings.PdfMargins;
 
+            AddPdfFooter(document, settings);
+
             document.DocumentInformation.Title = settings.Title;
             document.DocumentInformation.Subject = settings.Title;
             document.DocumentInformation.Author = Environment.UserName;
             document.DocumentInformation.Creator = settings.CompanyName;
-
-            AddPdfHeader(document, settings);
-            AddPdfFooter(document, settings);
         }
 
         /// <summary>
@@ -1628,111 +1464,6 @@ namespace Genesys.UI.Components.Forms.Services
             return new SizeF(customSize.Height, customSize.Width);
         }
 
-
-        /// <summary>
-        /// Prepara la hoja de Excel para impresión usando la misma intención del PDF:
-        /// papel, orientación, encabezados repetidos y escalado. Se usa reflection para
-        /// mantener compatibilidad entre versiones de Syncfusion XlsIO.
-        /// </summary>
-        private void ApplyExcelPageSetup(IWorksheet sheet, GenesysGridExportSettings settings)
-        {
-            if (sheet == null || settings == null)
-                return;
-
-            object pageSetup = GetObjectPropertyValue(sheet, "PageSetup");
-            if (pageSetup == null)
-                return;
-
-            TrySetEnumProperty(pageSetup, "Orientation", settings.PdfOrientation == PdfPageOrientation.Portrait ? "Portrait" : "Landscape");
-            TrySetEnumProperty(pageSetup, "PaperSize", GetExcelPaperSizeName(settings.PdfPaperMode));
-
-            TrySetProperty(pageSetup, "PrintTitleRows", "$" + settings.ExcelHeaderRowIndex.ToString() + ":$" + settings.ExcelHeaderRowIndex.ToString());
-            TrySetProperty(pageSetup, "CenterHorizontally", true);
-
-            // Márgenes básicos en pulgadas. Si la versión de XlsIO usa otros nombres, se ignoran.
-            TrySetProperty(pageSetup, "LeftMargin", 0.25D);
-            TrySetProperty(pageSetup, "RightMargin", 0.25D);
-            TrySetProperty(pageSetup, "TopMargin", 0.50D);
-            TrySetProperty(pageSetup, "BottomMargin", 0.50D);
-
-            if (settings.PdfScalingMode == GenesysPdfScalingMode.FitSheetOnOnePage)
-            {
-                TrySetProperty(pageSetup, "IsFitToPage", true);
-                TrySetProperty(pageSetup, "FitToPagesWide", 1);
-                TrySetProperty(pageSetup, "FitToPagesTall", 1);
-                return;
-            }
-
-            if (settings.PdfScalingMode == GenesysPdfScalingMode.FitAllColumnsOnOnePage ||
-                settings.PdfFitAllColumnsInOnePage)
-            {
-                TrySetProperty(pageSetup, "IsFitToPage", true);
-                TrySetProperty(pageSetup, "FitToPagesWide", 1);
-                TrySetProperty(pageSetup, "FitToPagesTall", 0);
-                return;
-            }
-
-            if (settings.PdfScalingMode == GenesysPdfScalingMode.FitAllRowsOnOnePage ||
-                settings.PdfFitAllRowsInOnePage)
-            {
-                TrySetProperty(pageSetup, "IsFitToPage", true);
-                TrySetProperty(pageSetup, "FitToPagesWide", 0);
-                TrySetProperty(pageSetup, "FitToPagesTall", 1);
-                return;
-            }
-
-            TrySetProperty(pageSetup, "IsFitToPage", false);
-        }
-
-        private static string GetExcelPaperSizeName(GenesysPdfPaperMode paperMode)
-        {
-            switch (paperMode)
-            {
-                case GenesysPdfPaperMode.LegalLandscape:
-                    return "PaperLegal";
-
-                case GenesysPdfPaperMode.OficioLandscape:
-                    return "PaperLegal";
-
-                case GenesysPdfPaperMode.DoubleLetterLandscape:
-                    return "Paper11x17";
-
-                case GenesysPdfPaperMode.TripleLetterLandscape:
-                    return "Paper11x17";
-
-                case GenesysPdfPaperMode.A3Landscape:
-                    return "PaperA3";
-
-                case GenesysPdfPaperMode.LetterLandscape:
-                case GenesysPdfPaperMode.AutomaticByColumns:
-                default:
-                    return "PaperLetter";
-            }
-        }
-
-        private static void TrySetEnumProperty(object target, string propertyName, string enumName)
-        {
-            if (target == null || string.IsNullOrWhiteSpace(propertyName) || string.IsNullOrWhiteSpace(enumName))
-                return;
-
-            try
-            {
-                System.Reflection.PropertyInfo property = target.GetType().GetProperty(propertyName);
-                if (property == null || !property.CanWrite)
-                    return;
-
-                Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                if (!targetType.IsEnum)
-                    return;
-
-                object value = Enum.Parse(targetType, enumName, true);
-                property.SetValue(target, value, null);
-            }
-            catch
-            {
-            }
-        }
-
         private void ApplyExcelActiveViewFormatting(IWorksheet sheet, GenesysGridExportSettings settings)
         {
             if (sheet == null || sheet.UsedRange == null || settings == null)
@@ -1999,432 +1730,26 @@ namespace Genesys.UI.Components.Forms.Services
             int row = sheet.UsedRange.LastRow + 2;
             int firstColumn = sheet.UsedRange.Column;
 
-            if (settings.IncludeGenerationInfo)
-            {
-                AppendExcelFooterLine(sheet, ref row, firstColumn, "Generado:", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                AppendExcelFooterLine(sheet, ref row, firstColumn, "Usuario:", Environment.UserName);
-            }
+            sheet.Range[row, firstColumn].Text = "Reporte:";
+            sheet.Range[row, firstColumn + 1].Text = settings.Title;
 
-            if (settings.IncludeFilterInfo)
-            {
-                List<string> filterLines = GetFilterInfoLinesForDisplay(settings);
+            row++;
+            sheet.Range[row, firstColumn].Text = "Generado:";
+            sheet.Range[row, firstColumn + 1].Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-                if (filterLines.Count == 0)
-                {
-                    AppendExcelFooterLine(sheet, ref row, firstColumn, "Filtros:", "Sin filtros registrados");
-                }
-                else
-                {
-                    AppendExcelFooterLine(sheet, ref row, firstColumn, "Filtros:", filterLines[0]);
+            row++;
+            sheet.Range[row, firstColumn].Text = "Usuario:";
+            sheet.Range[row, firstColumn + 1].Text = Environment.UserName;
 
-                    for (int index = 1; index < filterLines.Count; index++)
-                        AppendExcelFooterLine(sheet, ref row, firstColumn, string.Empty, filterLines[index]);
-                }
-            }
+            row++;
+            sheet.Range[row, firstColumn].Text = "Vista exportada:";
+            sheet.Range[row, firstColumn + 1].Text = "Vista activa del grid";
 
-            if (settings.IncludeExportSummary)
-            {
-                AppendExcelFooterLine(sheet, ref row, firstColumn, "Registros exportados:", GetApproximateExportedRecordCount().ToString());
-                AppendExcelFooterLine(sheet, ref row, firstColumn, "Papel PDF sugerido:", GetPdfPaperWithOrientationDisplayName(settings));
-                AppendExcelFooterLine(sheet, ref row, firstColumn, "Escalado:", GetPdfScalingDisplayNameForInfo(settings.PdfScalingMode));
-            }
+            row++;
+            sheet.Range[row, firstColumn].Text = "Papel PDF sugerido:";
+            sheet.Range[row, firstColumn + 1].Text = settings.PdfPaperMode.ToString();
 
             AppendExcelCustomFooter(sheet, settings, ref row);
-        }
-
-        private static void AppendExcelFooterLine(IWorksheet sheet, ref int row, int firstColumn, string label, string value)
-        {
-            if (sheet == null)
-                return;
-
-            sheet.Range[row, firstColumn].Text = label ?? string.Empty;
-            sheet.Range[row, firstColumn + 1].Text = value ?? string.Empty;
-            row++;
-        }
-
-
-        private string GetCurrentViewNameForDisplay(GenesysGridExportSettings settings)
-        {
-            if (settings != null && settings.CurrentViewLayout != null && !string.IsNullOrWhiteSpace(settings.CurrentViewLayout.ViewName))
-                return settings.CurrentViewLayout.ViewName;
-
-            return "Vista activa del grid";
-        }
-
-        private string GetFilterInfoForDisplay(GenesysGridExportSettings settings)
-        {
-            List<string> lines = GetFilterInfoLinesForDisplay(settings);
-
-            if (lines.Count == 0)
-                return "Sin filtros registrados";
-
-            return string.Join("; ", lines.ToArray());
-        }
-
-        private List<string> GetFilterInfoLinesForDisplay(GenesysGridExportSettings settings)
-        {
-            var result = new List<string>();
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Fuente oficial de filtros externos/panel: settings.AdditionalFilterInfoLines
-            // y settings.FilterInfoProvider, cargados desde GenesysGridForm/GenesysGridFiltersPanel.
-            // No invocar métodos del owner por reflexión aquí, porque duplicaba filtros
-            // ya reportados por el panel y podía volver a mezclar XML persistido.
-            AppendCustomFilterInfoLines(result, seen, settings);
-            // No leer CurrentViewLayout.FilterStateXml aquí.
-            // La fuente oficial de filtros del panel es GenesysGridFiltersPanel.GetExportFilterDescriptions(),
-            // que GenesysGridForm coloca en settings.AdditionalFilterInfoLines.
-            // Leer el XML aquí duplicaba Fecha/Rango/Fecha inicio/Fecha final.
-            AppendSfDataGridColumnFilterLines(result, seen);
-            AppendSfDataGridViewFilterLines(result, seen);
-
-            if (result.Count == 0)
-                result.Add("Sin filtros registrados");
-
-            return result;
-        }
-
-        private void AppendCustomFilterInfoLines(List<string> result, HashSet<string> seen, GenesysGridExportSettings settings)
-        {
-            if (result == null || seen == null || settings == null)
-                return;
-
-            if (settings.AdditionalFilterInfoLines != null)
-            {
-                foreach (string line in settings.AdditionalFilterInfoLines)
-                    AddFilterInfoLine(result, seen, line);
-            }
-
-            if (settings.FilterInfoProvider == null)
-                return;
-
-            try
-            {
-                IList<string> lines = settings.FilterInfoProvider();
-
-                if (lines == null)
-                    return;
-
-                foreach (string line in lines)
-                    AddFilterInfoLine(result, seen, line);
-            }
-            catch
-            {
-            }
-        }
-
-        private void AppendOwnerProvidedFilterInfoLines(List<string> result, HashSet<string> seen)
-        {
-            if (result == null || seen == null || owner == null)
-                return;
-
-            foreach (string methodName in new[]
-            {
-                "GetExportFilterInfoLines",
-                "GetExportFilterInfo",
-                "GetPanelFilterInfoLines",
-                "GetPanelFilterInfo",
-                "CaptureExportFilterInfo",
-                "CaptureFilterDisplayText"
-            })
-            {
-                object value = TryInvokeOwnerNoArgumentMethod(methodName);
-                AppendFilterInfoValue(result, seen, value);
-            }
-        }
-
-        private static bool IsTrivialFilterValue(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return true;
-
-            value = value.Trim();
-
-            return
-                string.Equals(value, "Todos", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "Todas", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "Todo", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "All", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "Seleccione", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "Seleccionar", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "N/A", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "-", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private object TryInvokeOwnerNoArgumentMethod(string methodName)
-        {
-            if (owner == null || string.IsNullOrWhiteSpace(methodName))
-                return null;
-
-            try
-            {
-                System.Reflection.MethodInfo method = owner.GetType().GetMethod(
-                    methodName,
-                    System.Reflection.BindingFlags.Instance |
-                    System.Reflection.BindingFlags.Public |
-                    System.Reflection.BindingFlags.NonPublic,
-                    null,
-                    Type.EmptyTypes,
-                    null);
-
-                if (method == null)
-                    return null;
-
-                return method.Invoke(owner, null);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static void AppendFilterInfoValue(List<string> result, HashSet<string> seen, object value)
-        {
-            if (result == null || seen == null || value == null)
-                return;
-
-            string text = value as string;
-            if (text != null)
-            {
-                foreach (string line in text.Split(new[] { "\r\n", "\n", ";" }, StringSplitOptions.RemoveEmptyEntries))
-                    AddFilterInfoLine(result, seen, line);
-
-                return;
-            }
-
-            System.Collections.IDictionary dictionary = value as System.Collections.IDictionary;
-            if (dictionary != null)
-            {
-                foreach (System.Collections.DictionaryEntry entry in dictionary)
-                    AddFilterInfoLine(result, seen, Convert.ToString(entry.Key) + ": " + Convert.ToString(entry.Value));
-
-                return;
-            }
-
-            System.Collections.IEnumerable enumerable = value as System.Collections.IEnumerable;
-            if (enumerable == null)
-                return;
-
-            foreach (object item in enumerable)
-                AddFilterInfoLine(result, seen, item == null ? null : Convert.ToString(item));
-        }
-
-        private void AppendFilterStateXmlLines(
-            List<string> result,
-            HashSet<string> seen,
-            GenesysGridExportSettings settings)
-        {
-            if (result == null || seen == null || settings == null || settings.CurrentViewLayout == null)
-                return;
-
-            string xml = settings.CurrentViewLayout.FilterStateXml;
-
-            if (string.IsNullOrWhiteSpace(xml))
-                return;
-
-            try
-            {
-                xml = System.Net.WebUtility.HtmlDecode(xml);
-
-                MatchCollection matches = Regex.Matches(
-                    xml,
-                    @"<(?<name>[A-Za-z_][A-Za-z0-9_\.\-]*)>(?<value>.*?)</\k<name>>",
-                    RegexOptions.Singleline);
-
-                foreach (Match match in matches)
-                {
-                    if (!match.Success)
-                        continue;
-
-                    string name = match.Groups["name"].Value;
-                    string value = match.Groups["value"].Value;
-
-                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    if (string.Equals(name, "GenesysGridFilterState", StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    value = NormalizeFilterValue(value);
-
-                    if (string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    AddFilterInfoLine(result, seen, NormalizeFilterName(name) + ": " + value);
-                }
-            }
-            catch
-            {
-            }
-        }
-
-        private void AppendSfDataGridColumnFilterLines(List<string> result, HashSet<string> seen)
-        {
-            if (result == null || seen == null || grid == null || grid.Columns == null)
-                return;
-
-            foreach (var column in grid.Columns)
-            {
-                if (column == null)
-                    continue;
-
-                string columnName = GetColumnHeaderText(column);
-                if (string.IsNullOrWhiteSpace(columnName))
-                    columnName = GetColumnMappingName(column);
-
-                object predicates = GetObjectPropertyValue(column, "FilterPredicates");
-                System.Collections.IEnumerable enumerable = predicates as System.Collections.IEnumerable;
-
-                if (enumerable == null)
-                    continue;
-
-                foreach (object predicate in enumerable)
-                {
-                    string value = GetFirstStringPropertyValue(
-                        predicate,
-                        "FilterValue",
-                        "ActualFilterValue",
-                        "Value",
-                        "FilterText");
-
-                    value = NormalizeFilterValue(value);
-
-                    if (string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    string filterType = GetFirstStringPropertyValue(predicate, "FilterType", "PredicateType", "FilterBehavior");
-                    filterType = NormalizeFilterValue(filterType);
-
-                    string line = string.IsNullOrWhiteSpace(filterType)
-                        ? columnName + ": " + value
-                        : columnName + ": " + value + " (" + filterType + ")";
-
-                    AddFilterInfoLine(result, seen, line);
-                }
-            }
-        }
-
-        private void AppendSfDataGridViewFilterLines(List<string> result, HashSet<string> seen)
-        {
-            if (result == null || seen == null || grid == null || grid.View == null)
-                return;
-
-            string filterText = GetFirstStringPropertyValue(
-                grid.View,
-                "FilterText",
-                "FilterString",
-                "FilterExpression");
-
-            filterText = NormalizeFilterValue(filterText);
-
-            if (!string.IsNullOrWhiteSpace(filterText))
-                AddFilterInfoLine(result, seen, "Filtro de vista: " + filterText);
-
-            object filter = GetObjectPropertyValue(grid.View, "Filter");
-
-            if (filter == null)
-                return;
-
-            string raw = Convert.ToString(filter);
-            raw = NormalizeFilterValue(raw);
-
-            if (string.IsNullOrWhiteSpace(raw))
-                return;
-
-            // Evita mostrar nombres técnicos de delegates/clases cuando no aportan al usuario.
-            if (raw.IndexOf("System.", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                raw.IndexOf("Func`", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                raw.IndexOf("Predicate", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return;
-            }
-
-            AddFilterInfoLine(result, seen, "Filtro interno del grid: " + raw);
-        }
-
-        private static string GetFirstStringPropertyValue(object target, params string[] propertyNames)
-        {
-            if (target == null || propertyNames == null)
-                return null;
-
-            foreach (string propertyName in propertyNames)
-            {
-                string value = GetStringPropertyValue(target, propertyName);
-
-                if (!string.IsNullOrWhiteSpace(value))
-                    return value;
-            }
-
-            return null;
-        }
-
-        private static string NormalizeFilterName(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                return string.Empty;
-
-            string result = Regex.Replace(name.Trim(), "([a-z])([A-Z])", "$1 $2");
-            result = result.Replace("_", " ");
-            return result;
-        }
-
-        private static string NormalizeFilterValue(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
-
-            value = System.Net.WebUtility.HtmlDecode(value);
-            value = Regex.Replace(value, @"\s+", " ").Trim();
-
-            if (string.Equals(value, "{}", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(value, "[]", StringComparison.OrdinalIgnoreCase))
-                return string.Empty;
-
-            return value;
-        }
-
-        private static void AddFilterInfoLine(List<string> result, HashSet<string> seen, string line)
-        {
-            if (result == null || seen == null || string.IsNullOrWhiteSpace(line))
-                return;
-
-            line = NormalizeFilterValue(line);
-            line = Regex.Replace(line, @"\s*:+\s*", ": ").Trim();
-
-            if (string.IsNullOrWhiteSpace(line))
-                return;
-
-            if (seen.Contains(line))
-                return;
-
-            seen.Add(line);
-            result.Add(line);
-        }
-
-        private int GetApproximateExportedRecordCount()
-        {
-            try
-            {
-                if (grid == null || grid.View == null)
-                    return 0;
-
-                object records = GetObjectPropertyValue(grid.View, "Records");
-                if (records != null)
-                {
-                    object countValue = GetObjectPropertyValue(records, "Count");
-                    if (countValue != null)
-                        return Convert.ToInt32(countValue);
-                }
-
-                System.Collections.ICollection collection = grid.View as System.Collections.ICollection;
-                if (collection != null)
-                    return collection.Count;
-            }
-            catch
-            {
-            }
-
-            return 0;
         }
 
         /// <summary>
@@ -2453,89 +1778,10 @@ namespace Genesys.UI.Components.Forms.Services
                 options.ExcludeColumns.Add(mappingName);
         }
 
-        private void AddPdfHeader(PdfDocument document, GenesysGridExportSettings settings)
-        {
-            if (document == null || settings == null || !settings.IncludeCorporateHeader)
-                return;
-
-            string company = string.IsNullOrWhiteSpace(settings.CompanyName)
-                ? ResolveCentralCompanyName()
-                : settings.CompanyName.Trim();
-
-            string application = string.IsNullOrWhiteSpace(GenesysExportBranding.ApplicationName)
-                ? string.Empty
-                : GenesysExportBranding.ApplicationName.Trim();
-
-            string title = string.IsNullOrWhiteSpace(settings.Title)
-                ? "Reporte"
-                : settings.Title.Trim();
-
-            bool showApplication =
-                !string.IsNullOrWhiteSpace(application) &&
-                !string.Equals(application, company, StringComparison.OrdinalIgnoreCase);
-
-            PdfFont companyFont = new PdfStandardFont(PdfFontFamily.Helvetica, 10F, PdfFontStyle.Bold);
-            PdfFont applicationFont = new PdfStandardFont(PdfFontFamily.Helvetica, 8F, PdfFontStyle.Regular);
-            PdfFont titleFont = new PdfStandardFont(PdfFontFamily.Helvetica, 8F, PdfFontStyle.Bold);
-            PdfFont viewFont = new PdfStandardFont(PdfFontFamily.Helvetica, 7F, PdfFontStyle.Regular);
-
-            float headerHeight = showApplication ? 56F : 44F;
-            var header = new PdfPageTemplateElement(document.PageSettings.Width, headerHeight);
-            PdfStringFormat centered = new PdfStringFormat(PdfTextAlignment.Center, PdfVerticalAlignment.Middle);
-
-            float y = 4F;
-
-            header.Graphics.DrawString(
-                company,
-                companyFont,
-                PdfBrushes.Black,
-                new RectangleF(0, y, document.PageSettings.Width, 12F),
-                centered);
-
-            y += 13F;
-
-            if (showApplication)
-            {
-                header.Graphics.DrawString(
-                    application,
-                    applicationFont,
-                    PdfBrushes.Gray,
-                    new RectangleF(0, y, document.PageSettings.Width, 10F),
-                    centered);
-
-                y += 11F;
-            }
-
-            header.Graphics.DrawString(
-                title,
-                titleFont,
-                PdfBrushes.Black,
-                new RectangleF(0, y, document.PageSettings.Width, 11F),
-                centered);
-
-            y += 12F;
-
-            header.Graphics.DrawString(
-                "Vista: " + GetCurrentViewNameForDisplay(settings),
-                viewFont,
-                PdfBrushes.Gray,
-                new RectangleF(0, y, document.PageSettings.Width, 10F),
-                centered);
-
-            PdfPen linePen = new PdfPen(PdfBrushes.LightGray, 0.4F);
-            header.Graphics.DrawLine(linePen, 0, headerHeight - 3F, document.PageSettings.Width, headerHeight - 3F);
-
-            document.Template.Top = header;
-        }
-
         private void AddPdfFooter(PdfDocument document, GenesysGridExportSettings settings)
         {
-            if (document == null || settings == null)
-                return;
-
             PdfFont font = new PdfStandardFont(PdfFontFamily.Helvetica, 8);
-            float footerHeight = Math.Max(settings.PdfFooterHeight, 22F);
-            var footer = new PdfPageTemplateElement(document.PageSettings.Width, footerHeight);
+            var footer = new PdfPageTemplateElement(document.PageSettings.Width, settings.PdfFooterHeight);
 
             PdfPageNumberField pageNumber = new PdfPageNumberField(font, PdfBrushes.Black);
             PdfPageCountField pageCount = new PdfPageCountField(font, PdfBrushes.Black);
@@ -2546,87 +1792,22 @@ namespace Genesys.UI.Components.Forms.Services
                 pageNumber,
                 pageCount);
 
+            footer.Graphics.DrawString(
+                settings.Title + " | Generado: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " | Usuario: " + Environment.UserName,
+                font,
+                PdfBrushes.Black,
+                0,
+                6);
+
             pageInfo.Bounds = new RectangleF(
                 0,
-                2F,
+                6,
                 document.PageSettings.Width,
-                18F);
+                18);
             pageInfo.StringFormat = new PdfStringFormat(PdfTextAlignment.Right);
-            pageInfo.Draw(footer.Graphics, new PointF(0, 2F));
+            pageInfo.Draw(footer.Graphics, new PointF(0, 6));
 
             document.Template.Bottom = footer;
-        }
-
-        private void AppendPdfDocumentSummary(PdfDocument document, GenesysGridExportSettings settings)
-        {
-            if (document == null || settings == null)
-                return;
-
-            if (!settings.IncludeGenerationInfo && !settings.IncludeFilterInfo && !settings.IncludeExportSummary)
-                return;
-
-            PdfPage page = document.Pages.Add();
-            PdfGraphics graphics = page.Graphics;
-
-            PdfFont titleFont = new PdfStandardFont(PdfFontFamily.Helvetica, 12F, PdfFontStyle.Bold);
-            PdfFont sectionFont = new PdfStandardFont(PdfFontFamily.Helvetica, 9F, PdfFontStyle.Bold);
-            PdfFont normalFont = new PdfStandardFont(PdfFontFamily.Helvetica, 8F, PdfFontStyle.Regular);
-
-            float pageWidth = page.GetClientSize().Width;
-            float y = 12F;
-            float lineHeight = 12F;
-
-            graphics.DrawString(
-                "Resumen de exportación",
-                titleFont,
-                PdfBrushes.Black,
-                new RectangleF(0, y, pageWidth, 16F),
-                new PdfStringFormat(PdfTextAlignment.Center));
-            y += 26F;
-
-            if (settings.IncludeGenerationInfo)
-            {
-                DrawPdfSummarySectionTitle(graphics, sectionFont, "Datos de generación", ref y);
-                DrawPdfSummaryLine(graphics, normalFont, "Generado: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), ref y, lineHeight);
-                DrawPdfSummaryLine(graphics, normalFont, "Usuario: " + Environment.UserName, ref y, lineHeight);
-                y += 6F;
-            }
-
-            if (settings.IncludeFilterInfo)
-            {
-                DrawPdfSummarySectionTitle(graphics, sectionFont, "Filtros aplicados", ref y);
-
-                foreach (string line in GetFilterInfoLinesForDisplay(settings))
-                    DrawPdfSummaryLine(graphics, normalFont, line, ref y, lineHeight);
-
-                y += 6F;
-            }
-
-            if (settings.IncludeExportSummary)
-            {
-                DrawPdfSummarySectionTitle(graphics, sectionFont, "Resumen", ref y);
-                DrawPdfSummaryLine(graphics, normalFont, "Registros exportados: " + GetApproximateExportedRecordCount().ToString(), ref y, lineHeight);
-                DrawPdfSummaryLine(graphics, normalFont, "Papel: " + GetPdfPaperWithOrientationDisplayName(settings), ref y, lineHeight);
-                DrawPdfSummaryLine(graphics, normalFont, "Escalado: " + GetPdfScalingDisplayNameForInfo(settings.PdfScalingMode), ref y, lineHeight);
-            }
-        }
-
-        private static void DrawPdfSummarySectionTitle(PdfGraphics graphics, PdfFont font, string text, ref float y)
-        {
-            if (graphics == null || font == null)
-                return;
-
-            graphics.DrawString(text ?? string.Empty, font, PdfBrushes.Black, 0, y);
-            y += 14F;
-        }
-
-        private static void DrawPdfSummaryLine(PdfGraphics graphics, PdfFont font, string text, ref float y, float lineHeight)
-        {
-            if (graphics == null || font == null)
-                return;
-
-            graphics.DrawString(text ?? string.Empty, font, PdfBrushes.Black, 12F, y);
-            y += lineHeight;
         }
 
         private static string GetSafeWorksheetName(string name)
@@ -2667,38 +1848,47 @@ namespace Genesys.UI.Components.Forms.Services
             if (!string.Equals(extension, "pdf", StringComparison.OrdinalIgnoreCase) || settings == null)
                 return string.Empty;
 
-            return "Salida PDF: " + GetPdfPaperWithOrientationDisplayName(settings) +
+            string paper = GetPdfPaperDisplayName(settings);
+            string orientation = settings.PdfOrientation == PdfPageOrientation.Portrait
+                ? "Vertical"
+                : "Horizontal";
+
+            return "Salida PDF: " + paper + " " + orientation +
                    " | Escalado: " + GetPdfScalingDisplayNameForInfo(settings.PdfScalingMode) +
                    " | Columnas: " + (settings.PdfOptions != null && settings.PdfOptions.AutoColumnWidth ? "auto ancho" : "anchos de la vista");
         }
 
-        private static string GetPdfPaperDisplayName(GenesysGridExportSettings settings)
+        private string GetPdfPaperDisplayName(GenesysGridExportSettings settings)
         {
             if (settings == null)
                 return "Carta";
 
-            return GetPdfPaperDisplayName(settings.PdfPaperMode);
-        }
+            switch (settings.PdfPaperMode)
+            {
+                case GenesysPdfPaperMode.LegalLandscape:
+                    return "Legal";
 
-        private string GetPdfPaperWithOrientationDisplayName(GenesysGridExportSettings settings)
-        {
-            if (settings == null)
-                return "Carta";
+                case GenesysPdfPaperMode.OficioLandscape:
+                    return "Oficio";
 
-            string paper = GetPdfPaperDisplayName(settings.PdfPaperMode);
+                case GenesysPdfPaperMode.DoubleLetterLandscape:
+                    return "Doble carta";
 
-            // La orientación mostrada debe reflejar la salida efectiva.
-            // En algunos modos de papel el enum conserva sufijo Landscape y el tamaño final
-            // puede quedar horizontal aunque settings.PdfOrientation venga Portrait por persistencia.
-            SizeF pageSize = GetPdfPageSize(settings);
-            string orientation = pageSize.Width >= pageSize.Height
-                ? "horizontal"
-                : "vertical";
+                case GenesysPdfPaperMode.TripleLetterLandscape:
+                    return "Triple carta";
 
-            if (string.IsNullOrWhiteSpace(paper))
-                paper = "Carta";
+                case GenesysPdfPaperMode.A3Landscape:
+                    return "A3";
 
-            return paper + " " + orientation;
+                case GenesysPdfPaperMode.CustomLandscape:
+                    return "Personalizado";
+
+                case GenesysPdfPaperMode.AutomaticByColumns:
+                    return "Automático";
+
+                default:
+                    return "Carta";
+            }
         }
 
         private static string NormalizeExtensionForFileName(string extension)
@@ -2910,15 +2100,6 @@ namespace Genesys.UI.Components.Forms.Services
                 settings.PdfOptions.ExportStackedHeaders = persisted.PdfExportStackedHeaders.Value;
             if (CanApplyUserPdfOption(settings, settings.PdfExportUnboundRowsOptionLevel) && persisted.PdfExportUnboundRows.HasValue)
                 settings.PdfOptions.ExportUnboundRows = persisted.PdfExportUnboundRows.Value;
-
-            if (CanApplyUserPdfOption(settings, settings.IncludeGenerationInfoOptionLevel) && persisted.IncludeGenerationInfo.HasValue)
-                settings.IncludeGenerationInfo = persisted.IncludeGenerationInfo.Value;
-
-            if (CanApplyUserPdfOption(settings, settings.IncludeFilterInfoOptionLevel) && persisted.IncludeFilterInfo.HasValue)
-                settings.IncludeFilterInfo = persisted.IncludeFilterInfo.Value;
-
-            if (CanApplyUserPdfOption(settings, settings.IncludeExportSummaryOptionLevel) && persisted.IncludeExportSummary.HasValue)
-                settings.IncludeExportSummary = persisted.IncludeExportSummary.Value;
             if (CanApplyUserPdfOption(settings, settings.PdfExportGroupsOptionLevel) && persisted.PdfExportGroups.HasValue)
                 TrySetProperty(settings.PdfOptions, "ExportGroups", persisted.PdfExportGroups.Value);
             if (CanApplyUserPdfOption(settings, settings.PdfExportGroupSummaryOptionLevel) && persisted.PdfExportGroupSummary.HasValue)
@@ -2955,9 +2136,6 @@ namespace Genesys.UI.Components.Forms.Services
             settings.PdfOptions.ExportFormat = dialog.SelectedPdfExportFormat;
             settings.PdfOptions.ExportStackedHeaders = dialog.SelectedPdfExportStackedHeaders;
             settings.PdfOptions.ExportUnboundRows = dialog.SelectedPdfExportUnboundRows;
-            settings.IncludeGenerationInfo = dialog.SelectedIncludeGenerationInfo;
-            settings.IncludeFilterInfo = dialog.SelectedIncludeFilterInfo;
-            settings.IncludeExportSummary = dialog.SelectedIncludeExportSummary;
             TrySetProperty(settings.PdfOptions, "ExportGroups", dialog.SelectedPdfExportGroups);
             TrySetProperty(settings.PdfOptions, "ExportGroupSummary", dialog.SelectedPdfExportGroupSummary);
             TrySetProperty(settings.PdfOptions, "ExportTableSummary", dialog.SelectedPdfExportTableSummary);
@@ -2986,9 +2164,6 @@ namespace Genesys.UI.Components.Forms.Services
             state.PdfExportFormat = settings.PdfOptions.ExportFormat;
             state.PdfExportStackedHeaders = settings.PdfOptions.ExportStackedHeaders;
             state.PdfExportUnboundRows = settings.PdfOptions.ExportUnboundRows;
-            state.IncludeGenerationInfo = settings.IncludeGenerationInfo;
-            state.IncludeFilterInfo = settings.IncludeFilterInfo;
-            state.IncludeExportSummary = settings.IncludeExportSummary;
             state.PdfExportGroups = TryGetBoolProperty(settings.PdfOptions, "ExportGroups", true);
             state.PdfExportGroupSummary = TryGetBoolProperty(settings.PdfOptions, "ExportGroupSummary", true);
             state.PdfExportTableSummary = TryGetBoolProperty(settings.PdfOptions, "ExportTableSummary", true);
@@ -3082,42 +2257,6 @@ namespace Genesys.UI.Components.Forms.Services
             return baseKey + "." + extension.ToLowerInvariant();
         }
 
-        private bool EnsureOutputFileAvailable(string filePath, string title)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-                return false;
-
-            try
-            {
-                string folder = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrWhiteSpace(folder) && !Directory.Exists(folder))
-                    Directory.CreateDirectory(folder);
-
-                if (!File.Exists(filePath))
-                    return true;
-
-                using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                {
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    owner,
-                    "No se puede generar el archivo porque está abierto o bloqueado por otra aplicación.\r\n\r\n" +
-                    "Cierra el archivo y vuelve a intentar.\r\n\r\n" +
-                    filePath + "\r\n\r\n" +
-                    ex.Message,
-                    string.IsNullOrWhiteSpace(title) ? "Exportar" : title,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-
-                return false;
-            }
-        }
-
         private static void HandleAfterExport(GenesysExportFileDialogResult result)
         {
             if (result == null || string.IsNullOrWhiteSpace(result.FilePath))
@@ -3147,39 +2286,6 @@ namespace Genesys.UI.Components.Forms.Services
                 catch
                 {
                 }
-            }
-        }
-
-        private static string GetPdfPaperDisplayName(GenesysPdfPaperMode paperMode)
-        {
-            switch (paperMode)
-            {
-                case GenesysPdfPaperMode.LetterLandscape:
-                    return "Carta";
-
-                case GenesysPdfPaperMode.LegalLandscape:
-                    return "Legal";
-
-                case GenesysPdfPaperMode.OficioLandscape:
-                    return "Oficio";
-
-                case GenesysPdfPaperMode.DoubleLetterLandscape:
-                    return "Doble carta";
-
-                case GenesysPdfPaperMode.TripleLetterLandscape:
-                    return "Triple carta";
-
-                case GenesysPdfPaperMode.A3Landscape:
-                    return "A3";
-
-                case GenesysPdfPaperMode.CustomLandscape:
-                    return "Personalizado";
-
-                case GenesysPdfPaperMode.AutomaticByColumns:
-                    return "Automático";
-
-                default:
-                    return "Carta";
             }
         }
 
@@ -3228,9 +2334,7 @@ namespace Genesys.UI.Components.Forms.Services
         private CheckBox pdfRepeatHeadersCheckBox;
         private CheckBox pdfExportFormatCheckBox;
         private CheckBox pdfExportStackedHeadersCheckBox;
-        private CheckBox pdfIncludeGenerationInfoCheckBox;
-        private CheckBox pdfIncludeFilterInfoCheckBox;
-        private CheckBox pdfIncludeExportSummaryCheckBox;
+        private CheckBox pdfExportUnboundRowsCheckBox;
         private CheckBox pdfExportGroupsCheckBox;
         private CheckBox pdfExportGroupSummaryCheckBox;
         private CheckBox pdfExportTableSummaryCheckBox;
@@ -3256,8 +2360,8 @@ namespace Genesys.UI.Components.Forms.Services
             MaximizeBox = false;
             MinimizeBox = false;
             ShowInTaskbar = false;
-            Width = 760;
-            Height = isPdf ? 650 : 205;
+            Width = 720;
+            Height = isPdf ? 525 : 205;
             Font = new Font("Segoe UI", 9F);
 
             BuildControls(defaultPath, openFileAfterExport, openFolderAfterExport, exportInfo, settings);
@@ -3346,24 +2450,9 @@ namespace Genesys.UI.Components.Forms.Services
             get { return pdfExportStackedHeadersCheckBox != null && pdfExportStackedHeadersCheckBox.Checked; }
         }
 
-        public bool SelectedIncludeGenerationInfo
-        {
-            get { return pdfIncludeGenerationInfoCheckBox != null && pdfIncludeGenerationInfoCheckBox.Checked; }
-        }
-
-        public bool SelectedIncludeFilterInfo
-        {
-            get { return pdfIncludeFilterInfoCheckBox != null && pdfIncludeFilterInfoCheckBox.Checked; }
-        }
-
-        public bool SelectedIncludeExportSummary
-        {
-            get { return pdfIncludeExportSummaryCheckBox != null && pdfIncludeExportSummaryCheckBox.Checked; }
-        }
-
         public bool SelectedPdfExportUnboundRows
         {
-            get { return false; }
+            get { return pdfExportUnboundRowsCheckBox != null && pdfExportUnboundRowsCheckBox.Checked; }
         }
 
         public bool SelectedPdfExportGroups
@@ -3401,7 +2490,7 @@ namespace Genesys.UI.Components.Forms.Services
             Label pathLabel = new Label
             {
                 Text = "Nombre de archivo:",
-                Left = 16,
+                Left = 12,
                 Top = 18,
                 Width = 120,
                 Height = 22,
@@ -3410,9 +2499,9 @@ namespace Genesys.UI.Components.Forms.Services
 
             pathTextBox = new TextBox
             {
-                Left = 140,
+                Left = 138,
                 Top = 17,
-                Width = 545,
+                Width = 499,
                 Height = 24,
                 Text = defaultPath
             };
@@ -3420,7 +2509,7 @@ namespace Genesys.UI.Components.Forms.Services
             browseButton = new Button
             {
                 Text = "...",
-                Left = 692,
+                Left = 644,
                 Top = 15,
                 Width = 42,
                 Height = 27
@@ -3436,36 +2525,27 @@ namespace Genesys.UI.Components.Forms.Services
                     Text = settings != null && !settings.AllowUserOverridePdfOptions
                         ? "Opciones de salida PDF (fijadas por el sistema)"
                         : "Opciones de salida PDF",
-                    Left = 16,
+                    Left = 62,
                     Top = 52,
-                    Width = 718,
-                    Height = 420
-                };
-
-                GroupBox pageGroupBox = new GroupBox
-                {
-                    Text = "Configuración de página",
-                    Left = 16,
-                    Top = 26,
-                    Width = 686,
-                    Height = 78
+                    Width = 624,
+                    Height = 292
                 };
 
                 Label paperLabel = new Label
                 {
                     Text = "Papel:",
-                    Left = 18,
-                    Top = 33,
-                    Width = 80,
+                    Left = 14,
+                    Top = 28,
+                    Width = 55,
                     Height = 22,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
 
                 pdfPaperComboBox = new ComboBox
                 {
-                    Left = 105,
-                    Top = 30,
-                    Width = 205,
+                    Left = 72,
+                    Top = 25,
+                    Width = 164,
                     DropDownStyle = ComboBoxStyle.DropDownList
                 };
                 AddPdfPaperOptions(pdfPaperComboBox);
@@ -3475,18 +2555,18 @@ namespace Genesys.UI.Components.Forms.Services
                 Label orientationLabel = new Label
                 {
                     Text = "Orientación:",
-                    Left = 355,
-                    Top = 33,
-                    Width = 90,
+                    Left = 260,
+                    Top = 28,
+                    Width = 78,
                     Height = 22,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
 
                 pdfOrientationComboBox = new ComboBox
                 {
-                    Left = 448,
-                    Top = 30,
-                    Width = 155,
+                    Left = 340,
+                    Top = 25,
+                    Width = 120,
                     DropDownStyle = ComboBoxStyle.DropDownList
                 };
                 pdfOrientationComboBox.Items.Add("Horizontal");
@@ -3496,26 +2576,12 @@ namespace Genesys.UI.Components.Forms.Services
                     : "Horizontal";
                 pdfOrientationComboBox.Enabled = IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfOrientationOptionLevel);
 
-                pageGroupBox.Controls.Add(paperLabel);
-                pageGroupBox.Controls.Add(pdfPaperComboBox);
-                pageGroupBox.Controls.Add(orientationLabel);
-                pageGroupBox.Controls.Add(pdfOrientationComboBox);
-
-                GroupBox fitGroupBox = new GroupBox
-                {
-                    Text = "Ajuste del contenido",
-                    Left = 16,
-                    Top = 112,
-                    Width = 686,
-                    Height = 112
-                };
-
                 Label columnWidthModeLabel = new Label
                 {
                     Text = "Ancho de columnas:",
-                    Left = 18,
-                    Top = 31,
-                    Width = 125,
+                    Left = 14,
+                    Top = 62,
+                    Width = 120,
                     Height = 22,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
@@ -3524,9 +2590,9 @@ namespace Genesys.UI.Components.Forms.Services
 
                 pdfColumnWidthModeComboBox = new ComboBox
                 {
-                    Left = 150,
-                    Top = 28,
-                    Width = 265,
+                    Left = 140,
+                    Top = 59,
+                    Width = 260,
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     Enabled = columnWidthModeEnabled
                 };
@@ -3535,114 +2601,83 @@ namespace Genesys.UI.Components.Forms.Services
 
                 Label scalingLabel = new Label
                 {
-                    Text = "Modo de ajuste:",
-                    Left = 18,
-                    Top = 65,
-                    Width = 125,
+                    Text = "Escalado:",
+                    Left = 14,
+                    Top = 94,
+                    Width = 120,
                     Height = 22,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
 
                 pdfScalingModeComboBox = new ComboBox
                 {
-                    Left = 150,
-                    Top = 62,
-                    Width = 265,
+                    Left = 140,
+                    Top = 91,
+                    Width = 260,
                     DropDownStyle = ComboBoxStyle.DropDownList
                 };
                 AddPdfScalingOptions(pdfScalingModeComboBox);
                 SelectPdfScalingOption(settings == null ? GenesysPdfScalingMode.None : settings.PdfScalingMode);
                 pdfScalingModeComboBox.Enabled = IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfScalingModeOptionLevel);
 
-                pdfAutoRowHeightCheckBox = CreatePdfCheckBox("Auto alto de filas", 455, 28, 190,
+                pdfAutoRowHeightCheckBox = CreatePdfCheckBox("Auto alto de filas", 430, 91, 160,
                     settings == null || settings.PdfAutoRowHeight,
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfAutoRowHeightOptionLevel));
 
-                pdfAllowTextWrapCheckBox = CreatePdfCheckBox("Texto en varias líneas", 455, 62, 205,
-                    settings == null || settings.PdfAllowTextWrap,
-                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfAllowTextWrapOptionLevel));
-
-                fitGroupBox.Controls.Add(columnWidthModeLabel);
-                fitGroupBox.Controls.Add(pdfColumnWidthModeComboBox);
-                fitGroupBox.Controls.Add(scalingLabel);
-                fitGroupBox.Controls.Add(pdfScalingModeComboBox);
-                fitGroupBox.Controls.Add(pdfAutoRowHeightCheckBox);
-                fitGroupBox.Controls.Add(pdfAllowTextWrapCheckBox);
-
-                GroupBox contentGroupBox = new GroupBox
-                {
-                    Text = "Contenido a exportar",
-                    Left = 16,
-                    Top = 232,
-                    Width = 336,
-                    Height = 170
-                };
-
-                pdfRepeatHeadersCheckBox = CreatePdfCheckBox("Repetir encabezados", 18, 28, 260,
+                pdfRepeatHeadersCheckBox = CreatePdfCheckBox("Repetir encabezados", 72, 120, 230,
                     settings == null || settings.PdfRepeatHeaders,
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfRepeatHeadersOptionLevel));
 
-                pdfExportFormatCheckBox = CreatePdfCheckBox("Conservar formato visual", 18, 56, 260,
+                pdfExportFormatCheckBox = CreatePdfCheckBox("Exportar formato visual", 340, 120, 220,
                     settings == null || settings.PdfOptions == null || settings.PdfOptions.ExportFormat,
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportFormatOptionLevel));
 
-                pdfExportStackedHeadersCheckBox = CreatePdfCheckBox("Encabezados agrupados", 18, 84, 260,
+                pdfExportStackedHeadersCheckBox = CreatePdfCheckBox("Exportar encabezados agrupados", 72, 150, 250,
                     settings == null || settings.PdfOptions == null || settings.PdfOptions.ExportStackedHeaders,
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportStackedHeadersOptionLevel));
 
-                pdfExportGroupsCheckBox = CreatePdfCheckBox("Grupos", 18, 112, 130,
+                pdfExportUnboundRowsCheckBox = CreatePdfCheckBox("Exportar filas no enlazadas", 340, 150, 240,
+                    settings == null || settings.PdfOptions == null || settings.PdfOptions.ExportUnboundRows,
+                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportUnboundRowsOptionLevel));
+
+                pdfExportGroupsCheckBox = CreatePdfCheckBox("Exportar grupos", 72, 180, 230,
                     settings == null || settings.PdfOptions == null || TryGetBoolProperty(settings.PdfOptions, "ExportGroups", true),
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportGroupsOptionLevel));
 
-                pdfExportGroupSummaryCheckBox = CreatePdfCheckBox("Resúmenes de grupo", 150, 112, 170,
+                pdfExportGroupSummaryCheckBox = CreatePdfCheckBox("Exportar resumen de grupos", 340, 180, 240,
                     settings == null || settings.PdfOptions == null || TryGetBoolProperty(settings.PdfOptions, "ExportGroupSummary", true),
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportGroupSummaryOptionLevel));
 
-                pdfExportTableSummaryCheckBox = CreatePdfCheckBox("Resumen general", 18, 140, 260,
+                pdfExportTableSummaryCheckBox = CreatePdfCheckBox("Exportar resumen de tabla", 72, 210, 230,
                     settings == null || settings.PdfOptions == null || TryGetBoolProperty(settings.PdfOptions, "ExportTableSummary", true),
                     IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfExportTableSummaryOptionLevel));
 
-                contentGroupBox.Controls.Add(pdfRepeatHeadersCheckBox);
-                contentGroupBox.Controls.Add(pdfExportFormatCheckBox);
-                contentGroupBox.Controls.Add(pdfExportStackedHeadersCheckBox);
-                contentGroupBox.Controls.Add(pdfExportGroupsCheckBox);
-                contentGroupBox.Controls.Add(pdfExportGroupSummaryCheckBox);
-                contentGroupBox.Controls.Add(pdfExportTableSummaryCheckBox);
-
-                GroupBox infoGroupBox = new GroupBox
-                {
-                    Text = "Información adicional",
-                    Left = 366,
-                    Top = 232,
-                    Width = 336,
-                    Height = 170
-                };
-
-                pdfIncludeFilterInfoCheckBox = CreatePdfCheckBox("Filtros aplicados", 18, 28, 260,
-                    settings == null || settings.IncludeFilterInfo,
-                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.IncludeFilterInfoOptionLevel));
-
-                pdfIncludeGenerationInfoCheckBox = CreatePdfCheckBox("Datos de generación", 18, 56, 260,
-                    settings == null || settings.IncludeGenerationInfo,
-                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.IncludeGenerationInfoOptionLevel));
-
-                pdfIncludeExportSummaryCheckBox = CreatePdfCheckBox("Resumen final", 18, 84, 260,
-                    settings != null && settings.IncludeExportSummary,
-                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.IncludeExportSummaryOptionLevel));
-
-                infoGroupBox.Controls.Add(pdfIncludeFilterInfoCheckBox);
-                infoGroupBox.Controls.Add(pdfIncludeGenerationInfoCheckBox);
-                infoGroupBox.Controls.Add(pdfIncludeExportSummaryCheckBox);
+                pdfAllowTextWrapCheckBox = CreatePdfCheckBox("Permitir texto en varias líneas", 72, 240, 260,
+                    settings == null || settings.PdfAllowTextWrap,
+                    IsPdfOptionEditable(settings, settings == null ? GenesysExportOptionLevel.UserSelectable : settings.PdfAllowTextWrapOptionLevel));
 
                 RegisterPdfOptionChangedHandlers();
 
-                pdfGroupBox.Controls.Add(pageGroupBox);
-                pdfGroupBox.Controls.Add(fitGroupBox);
-                pdfGroupBox.Controls.Add(contentGroupBox);
-                pdfGroupBox.Controls.Add(infoGroupBox);
+                pdfGroupBox.Controls.Add(paperLabel);
+                pdfGroupBox.Controls.Add(pdfPaperComboBox);
+                pdfGroupBox.Controls.Add(orientationLabel);
+                pdfGroupBox.Controls.Add(pdfOrientationComboBox);
+                pdfGroupBox.Controls.Add(columnWidthModeLabel);
+                pdfGroupBox.Controls.Add(pdfColumnWidthModeComboBox);
+                pdfGroupBox.Controls.Add(scalingLabel);
+                pdfGroupBox.Controls.Add(pdfScalingModeComboBox);
+                pdfGroupBox.Controls.Add(pdfAutoRowHeightCheckBox);
+                pdfGroupBox.Controls.Add(pdfRepeatHeadersCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportFormatCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportStackedHeadersCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportUnboundRowsCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportGroupsCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportGroupSummaryCheckBox);
+                pdfGroupBox.Controls.Add(pdfExportTableSummaryCheckBox);
+                pdfGroupBox.Controls.Add(pdfAllowTextWrapCheckBox);
 
                 Controls.Add(pdfGroupBox);
-                optionsTop = 486;
+                optionsTop = 356;
             }
             else if (!string.IsNullOrWhiteSpace(exportInfo))
             {
@@ -3663,7 +2698,7 @@ namespace Genesys.UI.Components.Forms.Services
             openFolderCheckBox = new CheckBox
             {
                 Text = "Abrir/mostrar la carpeta al terminar",
-                Left = 18,
+                Left = 62,
                 Top = optionsTop,
                 Width = 300,
                 Height = 24,
@@ -3673,7 +2708,7 @@ namespace Genesys.UI.Components.Forms.Services
             openFileCheckBox = new CheckBox
             {
                 Text = "Abrir el archivo generado al terminar",
-                Left = 18,
+                Left = 62,
                 Top = optionsTop + 28,
                 Width = 300,
                 Height = 24,
@@ -3683,8 +2718,8 @@ namespace Genesys.UI.Components.Forms.Services
             acceptButton = new Button
             {
                 Text = "Exportar",
-                Left = 548,
-                Top = optionsTop + 58,
+                Left = 504,
+                Top = optionsTop + 66,
                 Width = 86,
                 Height = 30,
                 DialogResult = DialogResult.OK
@@ -3694,8 +2729,8 @@ namespace Genesys.UI.Components.Forms.Services
             cancelButton = new Button
             {
                 Text = "Cancelar",
-                Left = 644,
-                Top = optionsTop + 58,
+                Left = 600,
+                Top = optionsTop + 66,
                 Width = 86,
                 Height = 30,
                 DialogResult = DialogResult.Cancel
@@ -3877,9 +2912,7 @@ namespace Genesys.UI.Components.Forms.Services
             if (pdfRepeatHeadersCheckBox != null) pdfRepeatHeadersCheckBox.CheckedChanged += PdfOutputOption_Changed;
             if (pdfExportFormatCheckBox != null) pdfExportFormatCheckBox.CheckedChanged += PdfOutputOption_Changed;
             if (pdfExportStackedHeadersCheckBox != null) pdfExportStackedHeadersCheckBox.CheckedChanged += PdfOutputOption_Changed;
-            if (pdfIncludeGenerationInfoCheckBox != null) pdfIncludeGenerationInfoCheckBox.CheckedChanged += PdfOutputOption_Changed;
-            if (pdfIncludeFilterInfoCheckBox != null) pdfIncludeFilterInfoCheckBox.CheckedChanged += PdfOutputOption_Changed;
-            if (pdfIncludeExportSummaryCheckBox != null) pdfIncludeExportSummaryCheckBox.CheckedChanged += PdfOutputOption_Changed;
+            if (pdfExportUnboundRowsCheckBox != null) pdfExportUnboundRowsCheckBox.CheckedChanged += PdfOutputOption_Changed;
             if (pdfExportGroupsCheckBox != null) pdfExportGroupsCheckBox.CheckedChanged += PdfOutputOption_Changed;
             if (pdfExportGroupSummaryCheckBox != null) pdfExportGroupSummaryCheckBox.CheckedChanged += PdfOutputOption_Changed;
             if (pdfExportTableSummaryCheckBox != null) pdfExportTableSummaryCheckBox.CheckedChanged += PdfOutputOption_Changed;
@@ -4209,9 +3242,6 @@ namespace Genesys.UI.Components.Forms.Services
         public bool? PdfExportFormat { get; set; }
         public bool? PdfExportStackedHeaders { get; set; }
         public bool? PdfExportUnboundRows { get; set; }
-        public bool? IncludeGenerationInfo { get; set; }
-        public bool? IncludeFilterInfo { get; set; }
-        public bool? IncludeExportSummary { get; set; }
         public bool? PdfExportGroups { get; set; }
         public bool? PdfExportGroupSummary { get; set; }
         public bool? PdfExportTableSummary { get; set; }
@@ -4274,12 +3304,6 @@ namespace Genesys.UI.Components.Forms.Services
                         state.PdfExportStackedHeaders = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
                     else if (string.Equals(name, "PdfExportUnboundRows", StringComparison.OrdinalIgnoreCase))
                         state.PdfExportUnboundRows = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
-                    else if (string.Equals(name, "IncludeGenerationInfo", StringComparison.OrdinalIgnoreCase))
-                        state.IncludeGenerationInfo = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
-                    else if (string.Equals(name, "IncludeFilterInfo", StringComparison.OrdinalIgnoreCase))
-                        state.IncludeFilterInfo = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
-                    else if (string.Equals(name, "IncludeExportSummary", StringComparison.OrdinalIgnoreCase))
-                        state.IncludeExportSummary = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
                     else if (string.Equals(name, "PdfExportGroups", StringComparison.OrdinalIgnoreCase))
                         state.PdfExportGroups = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
                     else if (string.Equals(name, "PdfExportGroupSummary", StringComparison.OrdinalIgnoreCase))
@@ -4341,12 +3365,6 @@ namespace Genesys.UI.Components.Forms.Services
                         lines.Add("PdfExportStackedHeaders=" + state.PdfExportStackedHeaders.Value.ToString().ToLowerInvariant());
                     if (state.PdfExportUnboundRows.HasValue)
                         lines.Add("PdfExportUnboundRows=" + state.PdfExportUnboundRows.Value.ToString().ToLowerInvariant());
-                    if (state.IncludeGenerationInfo.HasValue)
-                        lines.Add("IncludeGenerationInfo=" + state.IncludeGenerationInfo.Value.ToString().ToLowerInvariant());
-                    if (state.IncludeFilterInfo.HasValue)
-                        lines.Add("IncludeFilterInfo=" + state.IncludeFilterInfo.Value.ToString().ToLowerInvariant());
-                    if (state.IncludeExportSummary.HasValue)
-                        lines.Add("IncludeExportSummary=" + state.IncludeExportSummary.Value.ToString().ToLowerInvariant());
                     if (state.PdfExportGroups.HasValue)
                         lines.Add("PdfExportGroups=" + state.PdfExportGroups.Value.ToString().ToLowerInvariant());
                     if (state.PdfExportGroupSummary.HasValue)

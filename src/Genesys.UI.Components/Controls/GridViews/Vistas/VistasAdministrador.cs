@@ -66,7 +66,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         public VistasAdministrador(Form owner, SfDataGrid grid, ToolStripButton button, string gridKey)
-            : this(owner, grid, button, gridKey, new GridViewFileStore())
+            : this(owner, grid, button, gridKey, new GridViewSqlStore())
         {
         }
 
@@ -311,6 +311,14 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
             string viewName = IsDefaultView(currentViewName)
                 ? DefaultViewName
                 : currentViewName;
+
+            ClearRuntimeStateForView(viewName);
+        }
+
+        private void ClearRuntimeStateForView(string viewName)
+        {
+            if (string.IsNullOrWhiteSpace(viewName))
+                viewName = DefaultViewName;
 
             runtimeLayoutsByViewName.Remove(viewName);
             runtimeInternalFiltersByViewName.Remove(viewName);
@@ -792,10 +800,32 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
         private void DeleteView(string viewName)
         {
-            persistenceService.DeleteView(viewName);
+            if (string.IsNullOrWhiteSpace(viewName) || IsDefaultView(viewName))
+                return;
+
+            ClearRuntimeStateForView(viewName);
             DeleteInternalGridFiltersForView(viewName);
             RemoveViewFromOrder(viewName);
+
+            bool wasCurrentView = string.Equals(currentViewName, viewName, StringComparison.OrdinalIgnoreCase);
+
+            persistenceService.DeleteView(viewName);
+
+            if (wasCurrentView)
+            {
+                currentViewName = DefaultViewName;
+                hasChanges = false;
+                ClearRuntimeStateForView(DefaultViewName);
+                ClearGridRuntimeFilters();
+
+                if (applyFilterStateXml != null)
+                    applyFilterStateXml(null);
+
+                PersistCurrentViewName();
+            }
+
             RequestRefreshViews();
+            UpdateButtonState();
         }
 
         private IList<string> SortViewNamesByUserOrder(IList<string> viewNames)
@@ -905,16 +935,20 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
         {
             var result = new List<string>();
 
+            IGenesysGridViewOrderStore orderStore = store as IGenesysGridViewOrderStore;
+            if (orderStore == null)
+                return result;
+
             try
             {
-                string path = GetViewOrderFilePath();
+                IList<string> orderedViewNames = orderStore.LoadViewOrder(gridKey);
 
-                if (!File.Exists(path))
+                if (orderedViewNames == null)
                     return result;
 
-                foreach (string line in File.ReadAllLines(path))
+                foreach (string viewName in orderedViewNames)
                 {
-                    string value = (line ?? string.Empty).Trim();
+                    string value = (viewName ?? string.Empty).Trim();
 
                     if (string.IsNullOrWhiteSpace(value) || IsDefaultView(value))
                         continue;
@@ -934,37 +968,22 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
         private void SaveViewOrder(IList<string> orderedViewNames)
         {
+            IGenesysGridViewOrderStore orderStore = store as IGenesysGridViewOrderStore;
+            if (orderStore == null)
+                return;
+
             try
             {
-                string path = GetViewOrderFilePath();
-                string folder = Path.GetDirectoryName(path);
-
-                if (!Directory.Exists(folder))
-                    Directory.CreateDirectory(folder);
-
-                File.WriteAllLines(
-                    path,
+                orderStore.SaveViewOrder(
+                    gridKey,
                     (orderedViewNames ?? new List<string>())
                         .Where(x => !string.IsNullOrWhiteSpace(x) && !IsDefaultView(x))
                         .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToArray());
+                        .ToList());
             }
             catch
             {
             }
-        }
-
-        private string GetViewOrderFilePath()
-        {
-            string folder = Path.Combine(Application.UserAppDataPath, "GridViews");
-            Directory.CreateDirectory(folder);
-
-            string safeName = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(gridKey ?? "Grid"))
-                .Replace('+', '-')
-                .Replace('/', '_')
-                .TrimEnd('=');
-
-            return Path.Combine(folder, safeName + ".view-order.txt");
         }
 
         private void ApplyDefaultLayout()
@@ -973,7 +992,11 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
 
             try
             {
+                ClearRuntimeStateForView(DefaultViewName);
                 ClearGridRuntimeFilters();
+
+                if (applyFilterStateXml != null)
+                    applyFilterStateXml(null);
 
                 DataTable table = GetCurrentDataTable();
 
@@ -1002,6 +1025,7 @@ namespace Genesys.UI.Components.Controls.GridViews.Vistas
                 currentViewName = DefaultViewName;
                 hasChanges = false;
 
+                ClearRuntimeStateForView(DefaultViewName);
                 ClearGridRuntimeFilters();
 
                 if (applyFilterStateXml != null)

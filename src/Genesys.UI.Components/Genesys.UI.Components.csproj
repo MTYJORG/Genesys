@@ -99,6 +99,11 @@
     <Compile Include="Diagnostics\GenesysTrace.cs" />
     <Compile Include="Forms\GenesysFormVisual.cs" />
     <Compile Include="Forms\GenesysGridForm.cs" />
+    <Compile Include="Forms\Services\GenesysExportDialogAndPersistence.cs" />
+    <Compile Include="Forms\Services\GenesysGridExportExcel.cs" />
+    <Compile Include="Forms\Services\GenesysGridExportPdf.cs" />
+    <Compile Include="Forms\Services\GenesysGridExportSettings.cs" />
+    <Compile Include="Forms\Services\GenesysGridExportShared.cs" />
     <Compile Include="Forms\Services\GenesysLoadingForm.cs" />
     <Compile Include="Forms\GenesysPanelFactory.cs" />
     <Compile Include="Forms\GenesysSimpleForm.cs" />
